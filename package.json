@@ -1,0 +1,52 @@
+{
+  "name": "@mitr-analytics/mcp",
+  "version": "1.0.0",
+  "description": "Mitr analytics for Claude, Gemini and other MCP clients: list apps, pull reports and funnels, and ask questions about your own data. Cookie-free analytics, one API key.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "analytics",
+    "privacy",
+    "cookieless",
+    "mitr",
+    "claude",
+    "gemini"
+  ],
+  "homepage": "https://mitranalytics.dev/docs/mcp",
+  "bugs": {
+    "email": "support@mitranalytics.dev"
+  },
+  "license": "MIT",
+  "author": "Mitr Analytics",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mitr-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "test": "npm run build && node --test",
+    "prepublishOnly": "npm test"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
