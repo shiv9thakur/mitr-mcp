@@ -1,0 +1,39 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.shiv9thakur/mitr-mcp",
+  "title": "Mitr Analytics",
+  "description": "Ask about your Mitr cookie-free analytics: apps, reports, funnels, alerts and usage.",
+  "websiteUrl": "https://mitranalytics.dev/docs/mcp",
+  "repository": {
+    "url": "https://github.com/shiv9thakur/mitr-mcp",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@mitr-analytics/mcp",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "MITR_API_KEY",
+          "description": "Workspace API key from Mitr dashboard → Settings → API keys (mitr_live_...)",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "MITR_API_BASE_URL",
+          "description": "Override the API URL. Leave unset unless told otherwise.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "https://api.mitranalytics.dev"
+        }
+      ]
+    }
+  ]
+}

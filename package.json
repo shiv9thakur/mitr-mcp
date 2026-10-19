@@ -1,6 +1,7 @@
 {
   "name": "@mitr-analytics/mcp",
   "version": "1.0.0",
+  "mcpName": "io.github.shiv9thakur/mitr-mcp",
   "description": "Mitr analytics for Claude, Gemini and other MCP clients: list apps, pull reports and funnels, and ask questions about your own data. Cookie-free analytics, one API key.",
   "keywords": [
     "mcp",
@@ -13,6 +14,10 @@
     "gemini"
   ],
   "homepage": "https://mitranalytics.dev/docs/mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shiv9thakur/mitr-mcp.git"
+  },
   "bugs": {
     "email": "support@mitranalytics.dev"
   },
