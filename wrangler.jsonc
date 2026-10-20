@@ -8,7 +8,8 @@
   "workers_dev": false,
   "routes": [{ "pattern": "mcp.mitranalytics.dev", "custom_domain": true }],
   "vars": {
-    "MITR_API_BASE_URL": "https://api.mitranalytics.dev"
+    "MITR_API_BASE_URL": "https://api.mitranalytics.dev",
+    "MCP_RESOURCE_URL": "https://mcp.mitranalytics.dev/mcp"
   },
   "ratelimits": [
     { "name": "MCP_RATE_LIMITER", "namespace_id": "4101", "simple": { "limit": 300, "period": 60 } }
