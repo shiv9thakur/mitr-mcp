@@ -1,0 +1,17 @@
+// Hosted MCP endpoint: https://mcp.mitranalytics.dev/mcp
+// Deploy: `npx wrangler deploy` from this folder (needs the user's Cloudflare login).
+{
+  "name": "mitr-mcp",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-07-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "routes": [{ "pattern": "mcp.mitranalytics.dev", "custom_domain": true }],
+  "vars": {
+    "MITR_API_BASE_URL": "https://api.mitranalytics.dev"
+  },
+  "ratelimits": [
+    { "name": "MCP_RATE_LIMITER", "namespace_id": "4101", "simple": { "limit": 300, "period": 60 } }
+  ],
+  "observability": { "enabled": true }
+}

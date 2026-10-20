@@ -24,5 +24,12 @@ Backend-side; see `mitr-backend/app/core/api_key_auth.py` and `app/api/v1/mcp.py
 Read access to apps/reports/funnels/alerts/billing, plus one write path (`add_app`, which needs a key with the `apps:write` scope and never returns the app's secret). Every tool sets `annotations.readOnlyHint`. No delete, no alert/webhook editing, no team management. Widening this is a product decision, not a default to reach for when a tool would be "nice to have."
 
 
+## Hosted endpoint (Cloudflare Worker)
+`https://mcp.mitranalytics.dev/mcp` serves the same tools over Streamable HTTP for clients that take a URL + header instead of running `npx` (Claude Code `--transport http`, Cursor, VS Code, Gemini CLI). See `docs/scope/MCP_HOSTED_AND_APPS_SCOPE.md` Phase 1.
+- `src/http.ts` — `handleMcpHttpRequest(req, opts)`: web-standard Request → Response. Stateless (fresh `createServer` per request with the caller's `Authorization: Bearer mitr_live_…` key), `/health`, Origin allowlist, refuses keys in the URL, logs method/tool/status/last-4 of the key only. Tested by `test/http.test.mjs` with the real MCP HTTP client.
+- `src/worker.ts` — Cloudflare entry: per-IP rate limit binding, then `handleMcpHttpRequest`. Excluded from the npm build (`tsconfig.json`); type-checked by `npm run check:worker`; bundled by wrangler.
+- `src/version.ts` — must equal `package.json` version (a test checks).
+- Local: `wrangler dev --var MITR_API_BASE_URL:http://localhost:8000` against a local backend. Deploy: `npm run deploy:worker` (tests + type-check + `wrangler deploy`; needs Cloudflare login and the `mcp.mitranalytics.dev` custom domain in `wrangler.jsonc`).
+
 ## Publishing
 Published as `@mitr-analytics/mcp` (public, MIT). `prepublishOnly` runs the whole suite. Bump `version` in `package.json` (it is also what the server reports), then `npm publish`. Keep the dashboard's config snippet (`mcpConfigJson` in `mitr-dashboard/lib/features/ApiKeys/ApiKeysCard.dart`) in step with the package name and any new required env var.
