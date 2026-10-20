@@ -14,15 +14,67 @@ Mitr is cookie-free analytics, so there is no consent banner to wire up and noth
 
 ## Set up (about two minutes)
 
-You need [Node.js](https://nodejs.org) 18 or newer, and a Mitr account.
+You need a Mitr account. Nothing to install if you use the hosted endpoint.
 
-**1. Create an API key.** In the dashboard open **Settings → API keys & AI assistants → Create key**, give it a name (for example "Claude Desktop") and copy it. It is shown **once**.
+**1. Create an API key.** In the dashboard open **Settings → API keys & AI assistants → Create key**, give it a name (for example "Claude Code") and copy it. It is shown **once**.
 
 Keys are **read-only** unless you tick "Can register apps" when creating them (needed only for `add_app`), and they expire after 365 days by default (30, 90, 365 days or never). A key stops working if you leave or are removed from the workspace it was created in.
 
-**2. Add Mitr to your assistant.**
+**2. Connect your assistant.**
 
-*Claude Desktop*: open `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`) and add:
+### Hosted (no install)
+
+Point any client that supports remote MCP servers at `https://mcp.mitranalytics.dev/mcp` and send the key in the `Authorization` header. Never put the key in the URL; the endpoint refuses it.
+
+*Claude Code*:
+
+```bash
+claude mcp add --transport http mitr https://mcp.mitranalytics.dev/mcp --header "Authorization: Bearer mitr_live_..."
+```
+
+*Cursor* (`~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "mitr": {
+      "url": "https://mcp.mitranalytics.dev/mcp",
+      "headers": { "Authorization": "Bearer mitr_live_..." }
+    }
+  }
+}
+```
+
+*VS Code* (`.vscode/mcp.json`):
+
+```json
+{
+  "servers": {
+    "mitr": {
+      "type": "http",
+      "url": "https://mcp.mitranalytics.dev/mcp",
+      "headers": { "Authorization": "Bearer mitr_live_..." }
+    }
+  }
+}
+```
+
+*Gemini CLI* (`~/.gemini/settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "mitr": {
+      "httpUrl": "https://mcp.mitranalytics.dev/mcp",
+      "headers": { "Authorization": "Bearer mitr_live_..." }
+    }
+  }
+}
+```
+
+### Local (npx)
+
+For clients that run a command, such as Claude Desktop. You need [Node.js](https://nodejs.org) 18 or newer. Open `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`) and add:
 
 ```json
 {
@@ -36,15 +88,9 @@ Keys are **read-only** unless you tick "Can register apps" when creating them (n
 }
 ```
 
-*Gemini CLI*: add the same `mcpServers` block to `~/.gemini/settings.json`.
+The same works in Claude Code (`claude mcp add mitr --env MITR_API_KEY=mitr_live_... -- npx -y @mitr-analytics/mcp`) and the Gemini CLI if you prefer running it locally.
 
-*Claude Code*:
-
-```bash
-claude mcp add mitr --env MITR_API_KEY=mitr_live_... -- npx -y @mitr-analytics/mcp
-```
-
-**3. Restart the assistant** and ask a question. The dashboard shows when the key was last used.
+**3. Ask a question** (restart the assistant first if it's a local setup). The dashboard shows when the key was last used.
 
 ## Tools
 
@@ -77,7 +123,7 @@ During early access the MCP server works on every Mitr plan, including Free. Aft
 
 ## Troubleshooting
 
-Run `npx -y @mitr-analytics/mcp --version` in a terminal. If that prints a version, the package works and the problem is in the client config.
+Hosted: open https://mcp.mitranalytics.dev/ in a browser; it should show the server version. Local: run `npx -y @mitr-analytics/mcp --version` in a terminal. If either works, the problem is in the client config.
 
 | You see | What to do |
 |---|---|
@@ -85,6 +131,7 @@ Run `npx -y @mitr-analytics/mcp --version` in a terminal. If that prints a versi
 | "Your Mitr API key was rejected" | The key expired, was revoked or was copied wrongly, or you're no longer in its workspace. Create a new one in Settings → API keys. |
 | "missing the 'apps:write' permission" | The key is read-only. Create one with "Can register apps" ticked to use `add_app`. |
 | "early-access period has ended for the Free plan" | Upgrade the workspace; the same key starts working again. |
+| 401 from the hosted endpoint | The `Authorization: Bearer mitr_live_…` header is missing or malformed in the client config. |
 | "Mitr is rate-limiting this key" | Too many requests in a short time. Wait a minute. |
 | `npx: command not found` | Install Node.js 18+, then restart the assistant so it picks up the new PATH. |
 | "Could not reach Mitr" | Check your connection or proxy. Only set `MITR_API_BASE_URL` if you were told to. |
