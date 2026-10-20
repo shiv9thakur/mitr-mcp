@@ -10,6 +10,7 @@ export function registerBillingTools(server: McpServer, client: MitrClient) {
       description:
         "Get your workspace's current plan, subscription status, and quota usage (events used/limit, usage %, apps used/limit). Useful context before recommending changes that would affect event volume or app count.",
       inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () =>
       runTool(async () => {

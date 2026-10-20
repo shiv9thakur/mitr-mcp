@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { MitrClient } from "../client.js";
-import { jsonResult, runTool } from "../toolResult.js";
+import { runTool, visitorDataResult } from "../toolResult.js";
 
 export function registerReportTools(server: McpServer, client: MitrClient) {
   server.registerTool(
@@ -13,11 +13,12 @@ export function registerReportTools(server: McpServer, client: MitrClient) {
       inputSchema: {
         siteId: z.string().uuid().describe("The app's siteId, from list_apps."),
       },
+      annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async ({ siteId }) =>
       runTool(async () => {
         const data = await client.get(`/mcp/apps/${siteId}/report`);
-        return jsonResult(data);
+        return visitorDataResult(data);
       })
   );
 
@@ -31,12 +32,13 @@ export function registerReportTools(server: McpServer, client: MitrClient) {
         siteId: z.string().uuid().describe("The app's siteId, from list_apps."),
         limit: z.number().int().min(1).max(50).optional().describe("Max events to return (default 20, max 50)."),
       },
+      annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async ({ siteId, limit }) =>
       runTool(async () => {
         const query = limit !== undefined ? `?limit=${limit}` : "";
         const data = await client.get(`/mcp/apps/${siteId}/events/recent${query}`);
-        return jsonResult(data);
+        return visitorDataResult(data);
       })
   );
 }

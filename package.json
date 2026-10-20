@@ -1,6 +1,6 @@
 {
   "name": "@mitr-analytics/mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "mcpName": "io.github.shiv9thakur/mitr-mcp",
   "description": "Mitr analytics for Claude, Gemini and other MCP clients: list apps, pull reports and funnels, and ask questions about your own data. Cookie-free analytics, one API key.",
   "keywords": [
@@ -41,7 +41,10 @@
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test": "npm run build && node --test",
-    "prepublishOnly": "npm test"
+    "prepublishOnly": "npm test",
+    "check:worker": "tsc -p tsconfig.worker.json",
+    "dev:worker": "wrangler dev",
+    "deploy:worker": "npm test && npm run check:worker && wrangler deploy"
   },
   "publishConfig": {
     "access": "public"

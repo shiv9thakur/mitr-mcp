@@ -11,6 +11,7 @@ export function registerFunnelTools(server: McpServer, client: MitrClient) {
       description:
         "List every saved conversion funnel in your Mitr workspace, with each funnel's id (needed by get_funnel_results), name, and step definitions.",
       inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () =>
       runTool(async () => {
@@ -30,6 +31,7 @@ export function registerFunnelTools(server: McpServer, client: MitrClient) {
         start: z.string().datetime().optional().describe("ISO 8601 start of the range (default: 30 days ago)."),
         end: z.string().datetime().optional().describe("ISO 8601 end of the range (default: now)."),
       },
+      annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async ({ funnelId, start, end }) =>
       runTool(async () => {

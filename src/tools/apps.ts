@@ -11,6 +11,7 @@ export function registerAppTools(server: McpServer, client: MitrClient) {
       description:
         "List every app/site registered in your Mitr workspace, with each app's siteId (needed by get_app_report and get_recent_events), name, platform, and connection status.",
       inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () =>
       runTool(async () => {
@@ -24,7 +25,7 @@ export function registerAppTools(server: McpServer, client: MitrClient) {
     {
       title: "Register a new app in Mitr",
       description:
-        "Register a new app/site under your Mitr workspace so it can start receiving tracked events. Returns the new app's siteId and its SDK secretKey (shown once — needed to install the Mitr SDK on that app).",
+        "Register a new app/site under your Mitr workspace so it can start receiving tracked events. Returns the new app's siteId. The app's SDK secret key is deliberately not returned: tell the user to copy it from the Mitr dashboard (Integration Hub, the app's card). Needs an API key created with permission to register apps; a read-only key gets a clear error.",
       inputSchema: {
         name: z.string().min(1).max(100).describe("Human-readable name for the app, e.g. 'Marketing Site'."),
         platformType: z
@@ -37,15 +38,18 @@ export function registerAppTools(server: McpServer, client: MitrClient) {
             "Domain for web (e.g. 'example.com'); bundle ID for iOS/macOS; package name for Android; a free-form service name for server/desktop."
           ),
       },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     async ({ name, platformType, platformIdentifier }) =>
       runTool(async () => {
-        const data = await client.post("/mcp/apps", {
+        const data = await client.post<Record<string, unknown>>("/mcp/apps", {
           name,
           platformType,
           platformIdentifier,
         });
-        return jsonResult(data);
+        // The backend stopped returning it; also drop it here in case this runs against an older backend.
+        const { secretKey: _secret, ...safe } = data ?? {};
+        return jsonResult(safe);
       })
   );
 }

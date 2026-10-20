@@ -126,3 +126,16 @@ test("a slow server times out instead of hanging", async () => {
     clearInterval(keepAlive);
   }
 });
+
+test("401 for an expired key says so", async () => {
+  const { api } = client(() => json(401, { detail: "API key has expired. Create a new one in Settings → API keys." }));
+  const e = await failure(api.get("/mcp/apps"));
+  assert.match(e.message, /rejected \(API key has expired/);
+});
+
+test("402 (early access over) and 403 (missing permission) pass the backend's explanation through", async () => {
+  const paywall = client(() => json(402, { detail: "The Mitr MCP early-access period has ended for the Free plan. Upgrade at https://mitranalytics.dev/pricing to keep using it." }));
+  assert.match((await failure(paywall.api.get("/mcp/apps"))).message, /pricing/);
+  const scope = client(() => json(403, { detail: "This API key is missing the 'apps:write' permission." }));
+  assert.match((await failure(scope.api.post("/mcp/apps", {}))).message, /apps:write/);
+});

@@ -6,7 +6,7 @@ MCP server exposing Mitr to Claude Desktop / Gemini CLI over stdio. A thin adapt
 ## Structure
 - `src/config.ts` — `loadConfig(vars)`, pure: validates `MITR_API_KEY` (required, must look like `mitr_live_`/`mitr_test_`) and `MITR_API_BASE_URL` (default `https://api.mitranalytics.dev`; plain http only for localhost, since the key goes in a header). `src/env.ts` wraps it and exits 1 with a one-line reason.
 - `src/client.ts` — `createMitrClient(config, opts)` returns `{get, post}`: bearer auth, user agent, 30s timeout, and friendly `MitrApiError`s (401 = key rejected/revoked, 429 = rate limited with Retry-After, 5xx = Mitr-side, non-JSON bodies never dumped into the message, network failures = status 0).
-- `src/toolResult.ts` — `runTool()` wraps a handler and turns `MitrApiError`/anything else into an `isError: true` tool result instead of an uncaught exception killing the connection.
+- `src/toolResult.ts` — `runTool()` wraps a handler and turns `MitrApiError`/anything else into an `isError: true` tool result instead of an uncaught exception killing the connection. `visitorDataResult()` wraps results containing visitor-written text (reports, recent events) in an `untrusted_data` envelope and strips hidden characters (audit SEC-17); use it for any new tool that returns paths, referrers, UTM or event properties.
 - `src/tools/*.ts` — one file per resource area (`apps`, `reports`, `funnels`, `alerts`, `billing`), each exporting `registerXTools(server, client)` (the client is passed in, not imported, so tests can fake it). Tool input schemas are Zod shapes (plain objects, not `z.object(...)`) per `McpServer.registerTool`'s signature.
 - `src/server.ts` — `createServer(client, version)` registers every tool group; `startServer` connects `StdioServerTransport`.
 - `src/index.ts` — the `bin`: shebang, `--version`/`--help` (work without a key), then loads config and starts the server. The version is read from `package.json`.
@@ -21,8 +21,15 @@ Backend-side; see `mitr-backend/app/core/api_key_auth.py` and `app/api/v1/mcp.py
 3. Add a case to `test/tools.test.mjs` (route and arguments), then `npm test`. Also try it with `npx @modelcontextprotocol/inspector node dist/index.js` against a running local backend.
 
 ## Scope (deliberate, as of this writing)
-Read access to apps/reports/funnels/alerts/billing, plus one write path (`add_app`). No delete, no alert/webhook editing, no team management. Widening this is a product decision, not a default to reach for when a tool would be "nice to have."
+Read access to apps/reports/funnels/alerts/billing, plus one write path (`add_app`, which needs a key with the `apps:write` scope and never returns the app's secret). Every tool sets `annotations.readOnlyHint`. No delete, no alert/webhook editing, no team management. Widening this is a product decision, not a default to reach for when a tool would be "nice to have."
 
+
+## Hosted endpoint (Cloudflare Worker)
+`https://mcp.mitranalytics.dev/mcp` serves the same tools over Streamable HTTP for clients that take a URL + header instead of running `npx` (Claude Code `--transport http`, Cursor, VS Code, Gemini CLI). See `docs/scope/MCP_HOSTED_AND_APPS_SCOPE.md` Phase 1.
+- `src/http.ts` — `handleMcpHttpRequest(req, opts)`: web-standard Request → Response. Stateless (fresh `createServer` per request with the caller's `Authorization: Bearer mitr_live_…` key), `/health`, Origin allowlist, refuses keys in the URL, logs method/tool/status/last-4 of the key only. Tested by `test/http.test.mjs` with the real MCP HTTP client.
+- `src/worker.ts` — Cloudflare entry: per-IP rate limit binding, then `handleMcpHttpRequest`. Excluded from the npm build (`tsconfig.json`); type-checked by `npm run check:worker`; bundled by wrangler.
+- `src/version.ts` — must equal `package.json` version (a test checks).
+- Local: `wrangler dev --var MITR_API_BASE_URL:http://localhost:8000` against a local backend. Deploy: `npm run deploy:worker` (tests + type-check + `wrangler deploy`; needs Cloudflare login and the `mcp.mitranalytics.dev` custom domain in `wrangler.jsonc`).
 
 ## Publishing
 Published as `@mitr-analytics/mcp` (public, MIT). `prepublishOnly` runs the whole suite. Bump `version` in `package.json` (it is also what the server reports), then `npm publish`. Keep the dashboard's config snippet (`mcpConfigJson` in `mitr-dashboard/lib/features/ApiKeys/ApiKeysCard.dart`) in step with the package name and any new required env var.

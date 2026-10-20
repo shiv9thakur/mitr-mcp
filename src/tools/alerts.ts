@@ -10,6 +10,7 @@ export function registerAlertTools(server: McpServer, client: MitrClient) {
       description:
         "Get your workspace's traffic-anomaly alert configuration (spike/drop direction, threshold %, notification channel), if one is set. Returns { rule: null } if none is configured.",
       inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () =>
       runTool(async () => {
