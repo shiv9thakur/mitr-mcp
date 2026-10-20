@@ -35,5 +35,19 @@
         }
       ]
     }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.mitranalytics.dev/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer followed by your Mitr API key (mitr_live_...), from the Mitr dashboard: Settings → API keys",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
   ]
 }
