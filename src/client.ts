@@ -80,7 +80,8 @@ export function createMitrClient(config: MitrConfig, options: ClientOptions = {}
     if (!res.ok) {
       const detail = detailOf(data);
       if (res.status === 401) {
-        throw new MitrApiError(401, `Your Mitr API key was rejected. It may have been revoked or mistyped. ${SETTINGS_HINT}`);
+        const why = detail && /expired|no longer in/i.test(detail) ? ` (${detail})` : "";
+        throw new MitrApiError(401, `Your Mitr API key was rejected${why}. It may have expired, been revoked or been mistyped. ${SETTINGS_HINT}`);
       }
       if (res.status === 429) {
         const wait = res.headers.get("retry-after");

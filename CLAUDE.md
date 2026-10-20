@@ -6,7 +6,7 @@ MCP server exposing Mitr to Claude Desktop / Gemini CLI over stdio. A thin adapt
 ## Structure
 - `src/config.ts` — `loadConfig(vars)`, pure: validates `MITR_API_KEY` (required, must look like `mitr_live_`/`mitr_test_`) and `MITR_API_BASE_URL` (default `https://api.mitranalytics.dev`; plain http only for localhost, since the key goes in a header). `src/env.ts` wraps it and exits 1 with a one-line reason.
 - `src/client.ts` — `createMitrClient(config, opts)` returns `{get, post}`: bearer auth, user agent, 30s timeout, and friendly `MitrApiError`s (401 = key rejected/revoked, 429 = rate limited with Retry-After, 5xx = Mitr-side, non-JSON bodies never dumped into the message, network failures = status 0).
-- `src/toolResult.ts` — `runTool()` wraps a handler and turns `MitrApiError`/anything else into an `isError: true` tool result instead of an uncaught exception killing the connection.
+- `src/toolResult.ts` — `runTool()` wraps a handler and turns `MitrApiError`/anything else into an `isError: true` tool result instead of an uncaught exception killing the connection. `visitorDataResult()` wraps results containing visitor-written text (reports, recent events) in an `untrusted_data` envelope and strips hidden characters (audit SEC-17); use it for any new tool that returns paths, referrers, UTM or event properties.
 - `src/tools/*.ts` — one file per resource area (`apps`, `reports`, `funnels`, `alerts`, `billing`), each exporting `registerXTools(server, client)` (the client is passed in, not imported, so tests can fake it). Tool input schemas are Zod shapes (plain objects, not `z.object(...)`) per `McpServer.registerTool`'s signature.
 - `src/server.ts` — `createServer(client, version)` registers every tool group; `startServer` connects `StdioServerTransport`.
 - `src/index.ts` — the `bin`: shebang, `--version`/`--help` (work without a key), then loads config and starts the server. The version is read from `package.json`.
@@ -21,7 +21,7 @@ Backend-side; see `mitr-backend/app/core/api_key_auth.py` and `app/api/v1/mcp.py
 3. Add a case to `test/tools.test.mjs` (route and arguments), then `npm test`. Also try it with `npx @modelcontextprotocol/inspector node dist/index.js` against a running local backend.
 
 ## Scope (deliberate, as of this writing)
-Read access to apps/reports/funnels/alerts/billing, plus one write path (`add_app`). No delete, no alert/webhook editing, no team management. Widening this is a product decision, not a default to reach for when a tool would be "nice to have."
+Read access to apps/reports/funnels/alerts/billing, plus one write path (`add_app`, which needs a key with the `apps:write` scope and never returns the app's secret). Every tool sets `annotations.readOnlyHint`. No delete, no alert/webhook editing, no team management. Widening this is a product decision, not a default to reach for when a tool would be "nice to have."
 
 
 ## Publishing
