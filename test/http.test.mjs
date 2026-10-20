@@ -11,7 +11,7 @@ import { VERSION } from "../dist/version.js";
 const KEY = "mitr_live_" + "a".repeat(32) + "_" + "b".repeat(32);
 const ENDPOINT = "https://mcp.mitranalytics.dev/mcp";
 
-function setup(apiHandler = () => ({ apps: [{ name: "Stub Site", siteId: "s1" }] })) {
+function setup(apiHandler = () => ({ apps: [{ name: "Stub Site", siteId: "s1" }] }), extra = {}) {
   const apiCalls = [];
   const logs = [];
   const fetchImpl = async (url, init) => {
@@ -20,7 +20,8 @@ function setup(apiHandler = () => ({ apps: [{ name: "Stub Site", siteId: "s1" }]
     const status = out?.__status ?? 200;
     return new Response(JSON.stringify(out?.__body ?? out), { status, headers: { "content-type": "application/json" } });
   };
-  const handler = (req) => handleMcpHttpRequest(req, { version: VERSION, fetchImpl, log: (e) => logs.push(e) });
+  const handler = (req) =>
+    handleMcpHttpRequest(req, { version: VERSION, fetchImpl, log: (e) => logs.push(e), tokenCheckCacheMs: 0, ...extra });
   return { apiCalls, logs, handler };
 }
 
@@ -56,13 +57,66 @@ test("a real MCP client lists the tools and calls one with the caller's key", as
   await client.close();
 });
 
-test("a key the Mitr API rejects becomes a clear tool error, not a crash", async () => {
-  const { handler } = setup(() => ({ __status: 401, __body: { detail: "API key has expired." } }));
-  const client = await connect(handler);
-  const r = await client.callTool({ name: "list_apps", arguments: {} });
-  assert.equal(r.isError, true);
-  assert.match(r.content[0].text, /expired/);
+test("a credential the Mitr API rejects gets an HTTP 401 the client can act on (refresh or sign in)", async () => {
+  const { handler } = setup(() => ({ __status: 401, __body: { detail: "Access token is invalid, expired or revoked." } }));
+  const res = await handler(new Request(ENDPOINT, {
+    method: "POST",
+    headers: { authorization: `Bearer ${KEY}`, "content-type": "application/json", accept: "application/json, text/event-stream" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+  }));
+  assert.equal(res.status, 401);
+  const challenge = res.headers.get("www-authenticate");
+  assert.match(challenge, /error="invalid_token"/);
+  assert.match(challenge, /resource_metadata="https:\/\/mcp\.mitranalytics\.dev\/\.well-known\/oauth-protected-resource"/);
+  assert.match((await res.json()).message, /expired or revoked/);
+});
+
+test("early access over (402) and missing permission (403) come back with Mitr's explanation", async () => {
+  for (const [status, detail] of [[402, "Upgrade at https://mitranalytics.dev/pricing"], [403, "missing the 'read' permission"]]) {
+    const { handler } = setup((u) => (u.endsWith("/token-check") ? { __status: status, __body: { detail } } : {}));
+    const res = await handler(new Request(ENDPOINT, { method: "POST", headers: { authorization: `Bearer ${KEY}` }, body: "{}" }));
+    assert.equal(res.status, status);
+    assert.equal((await res.json()).message, detail);
+  }
+});
+
+test("an OAuth access token from the sign-in flow is accepted and forwarded", async () => {
+  const token = "mitr_oat_" + "Q".repeat(43);
+  const { apiCalls, handler } = setup();
+  const client = await connect(handler, { Authorization: `Bearer ${token}` });
+  await client.callTool({ name: "list_apps", arguments: {} });
+  assert.ok(apiCalls.some((c) => c.url.endsWith("/api/v1/mcp/token-check") && c.auth === `Bearer ${token}`));
+  assert.equal(apiCalls.at(-1).auth, `Bearer ${token}`);
   await client.close();
+});
+
+test("a credential that passed the check is trusted for a while instead of re-checked every request", async () => {
+  const { apiCalls, handler } = setup(undefined, { tokenCheckCacheMs: 60_000 });
+  const key = "mitr_live_" + "c".repeat(40);
+  const req = () => new Request(ENDPOINT, {
+    method: "POST",
+    headers: { authorization: `Bearer ${key}`, "content-type": "application/json", accept: "application/json, text/event-stream" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+  });
+  await handler(req());
+  await handler(req());
+  assert.equal(apiCalls.filter((c) => c.url.endsWith("/token-check")).length, 1);
+});
+
+test("protected resource metadata names the Mitr API as the authorization server", async () => {
+  const { handler } = setup();
+  for (const path of ["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"]) {
+    const res = await handler(new Request(`https://mcp.mitranalytics.dev${path}`));
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), {
+      resource: ENDPOINT,
+      authorization_servers: ["https://api.mitranalytics.dev"],
+      scopes_supported: ["mitr:read", "mitr:apps.write", "offline_access"],
+      bearer_methods_supported: ["header"],
+      resource_name: "Mitr Analytics",
+      resource_documentation: "https://mitranalytics.dev/docs/mcp",
+    });
+  }
 });
 
 test("no key, or a malformed one, gets 401 with a Bearer challenge and setup help", async () => {
@@ -74,7 +128,7 @@ test("no key, or a malformed one, gets 401 with a Bearer challenge and setup hel
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
     }));
     assert.equal(res.status, 401, String(auth));
-    assert.match(res.headers.get("www-authenticate"), /^Bearer /);
+    assert.match(res.headers.get("www-authenticate"), /^Bearer resource_metadata="https:\/\/mcp\.mitranalytics\.dev\/\.well-known\/oauth-protected-resource", scope="mitr:read"/);
     assert.match((await res.json()).message, /API key/);
   }
   assert.equal(apiCalls.length, 0);

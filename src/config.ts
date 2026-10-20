@@ -23,7 +23,8 @@ export function loadConfig(vars: Record<string, string | undefined>): MitrConfig
       `MITR_API_KEY is not set. Create a key at ${SETTINGS_URL} and add it to this server's "env" in your MCP client config.`
     );
   }
-  if (!/^mitr_(live|test)_\S{20,}$/.test(apiKey)) {
+  // mitr_oat_ = an OAuth access token from the hosted endpoint's sign-in flow (src/http.ts passes it through here).
+  if (!/^mitr_(live|test|oat)_\S{20,}$/.test(apiKey)) {
     throw new ConfigError(
       `MITR_API_KEY doesn't look like a Mitr API key (they start with "mitr_live_"). Copy it again from ${SETTINGS_URL}.`
     );

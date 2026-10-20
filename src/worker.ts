@@ -12,6 +12,8 @@ interface RateLimiter {
 
 export interface Env {
   MITR_API_BASE_URL?: string;
+  /** This endpoint's canonical URL (OAuth resource). Default https://mcp.mitranalytics.dev/mcp. */
+  MCP_RESOURCE_URL?: string;
   /** Comma-separated extra browser origins to allow, on top of the defaults in http.ts. */
   MCP_EXTRA_ALLOWED_ORIGINS?: string;
   /** Coarse per-IP limit in front of the Mitr API's own per-key limit, so junk traffic never reaches it. */
@@ -32,6 +34,7 @@ export default {
     return handleMcpHttpRequest(request, {
       version: VERSION,
       apiBaseUrl: env.MITR_API_BASE_URL,
+      resourceUrl: env.MCP_RESOURCE_URL,
       allowedOrigins: [...DEFAULT_ALLOWED_ORIGINS, ...extra],
       log: (entry) => console.log(JSON.stringify(entry)),
     });
