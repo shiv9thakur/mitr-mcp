@@ -42,12 +42,14 @@ export function registerAppTools(server: McpServer, client: MitrClient) {
     },
     async ({ name, platformType, platformIdentifier }) =>
       runTool(async () => {
-        const data = await client.post("/mcp/apps", {
+        const data = await client.post<Record<string, unknown>>("/mcp/apps", {
           name,
           platformType,
           platformIdentifier,
         });
-        return jsonResult(data);
+        // The backend stopped returning it; also drop it here in case this runs against an older backend.
+        const { secretKey: _secret, ...safe } = data ?? {};
+        return jsonResult(safe);
       })
   );
 }

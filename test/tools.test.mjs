@@ -142,3 +142,10 @@ test("every tool declares whether it writes, and only add_app does", () => {
   assert.equal(tools.add_app.annotations.destructiveHint, false);
   assert.doesNotMatch(tools.add_app.description, /Returns[^.]*secret/i);
 });
+
+test("add_app never passes an app secret into the conversation, even from an older backend", async () => {
+  const { tools } = setup({ post: () => ({ siteId: "s1", secretKey: "sk_live_should_not_leak" }) });
+  const r = await call(tools.add_app, { name: "A", platformType: "web", platformIdentifier: "a.example.com" });
+  assert.doesNotMatch(r.content[0].text, /sk_live_should_not_leak|secretKey/);
+  assert.match(r.content[0].text, /s1/);
+});
