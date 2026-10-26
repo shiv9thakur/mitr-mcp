@@ -24,11 +24,11 @@ function setup(handlers = {}) {
 
 const call = async (tool, args) => tool.handler(args, {});
 
-test("exposes exactly the eight documented tools, each with a title and a real description", () => {
+test("exposes exactly the seventeen documented tools, each with a title and a real description", () => {
   const { tools } = setup();
   assert.deepEqual(
     Object.keys(tools).sort(),
-    ["add_app", "get_alert_rule", "get_app_report", "get_billing_usage", "get_funnel_results", "get_recent_events", "list_apps", "list_funnels"]
+    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "get_alert_rule", "get_app_report", "get_billing_usage", "get_funnel_results", "get_recent_events", "list_apps", "list_funnels", "update_funnel", "update_qr_campaign", "update_webhook"]
   );
   for (const [name, t] of Object.entries(tools)) {
     assert.ok(t.title && t.title.length > 3, `${name} title`);
@@ -61,7 +61,7 @@ test("read tools call the expected /mcp routes and return the JSON as text", asy
   assert.ok(calls.every((c) => c[0] === "GET"));
 });
 
-test("the only write is add_app, and it sends exactly the three fields", async () => {
+test("add_app sends exactly the three fields", async () => {
   const { calls, tools } = setup();
   await call(tools.add_app, { name: "Shop", platformType: "web", platformIdentifier: "shop.example.com" });
   assert.deepEqual(calls, [["POST", "/mcp/apps", { name: "Shop", platformType: "web", platformIdentifier: "shop.example.com" }]]);
@@ -134,13 +134,14 @@ test("visitor-derived results are wrapped as untrusted data and cleaned of hidde
   assert.ok("untrusted_data" in JSON.parse(report.content[0].text));
 });
 
-test("every tool declares whether it writes, and only add_app does", () => {
+test("every tool declares whether it writes; deletes are flagged destructive", () => {
   const { tools } = setup();
+  const writes = new Set(["add_app", "create_funnel", "update_funnel", "delete_funnel", "create_qr_campaign", "update_qr_campaign", "add_qr_code", "create_webhook", "update_webhook", "delete_webhook"]);
+  const destructive = new Set(["delete_funnel", "delete_webhook"]);
   for (const [name, t] of Object.entries(tools)) {
-    assert.equal(t.annotations?.readOnlyHint, name !== "add_app", `${name} readOnlyHint`);
+    assert.equal(t.annotations?.readOnlyHint, !writes.has(name), `${name} readOnlyHint`);
+    assert.equal(t.annotations?.destructiveHint === true, destructive.has(name), `${name} destructiveHint`);
   }
-  assert.equal(tools.add_app.annotations.destructiveHint, false);
-  assert.doesNotMatch(tools.add_app.description, /Returns[^.]*secret/i);
 });
 
 test("add_app never passes an app secret into the conversation, even from an older backend", async () => {
