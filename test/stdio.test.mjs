@@ -40,12 +40,12 @@ async function connect(env = {}) {
   return client;
 }
 
-test("lists the eight tools and calls one through the real protocol", async () => {
+test("lists the twenty-one tools and calls one through the real protocol", async () => {
   mode = "ok";
   seen.length = 0;
   const client = await connect();
   const { tools } = await client.listTools();
-  assert.equal(tools.length, 8);
+  assert.equal(tools.length, 21);
   assert.ok(tools.some((t) => t.name === "list_apps"));
 
   const r = await client.callTool({ name: "list_apps", arguments: {} });

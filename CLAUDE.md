@@ -21,7 +21,7 @@ Backend-side; see `mitr-backend/app/core/api_key_auth.py` and `app/api/v1/mcp.py
 3. Add a case to `test/tools.test.mjs` (route and arguments), then `npm test`. Also try it with `npx @modelcontextprotocol/inspector node dist/index.js` against a running local backend.
 
 ## Scope (deliberate, as of this writing)
-Read access to apps/reports/funnels/alerts/billing, plus one write path (`add_app`, which needs a key with the `apps:write` scope and never returns the app's secret). Every tool sets `annotations.readOnlyHint`. No delete, no alert/webhook editing, no team management. Widening this is a product decision, not a default to reach for when a tool would be "nice to have."
+Read access to apps/reports/funnels/alerts/billing. Writes, each behind its own API key permission: `add_app` (`apps:write`, never returns the app's secret); funnels create/update/delete (`funnels:write`, delete also needs `delete`); QR campaigns create/update (archive is a status) and add codes (`qr:write`); webhooks create/update/delete (`webhooks:write`, delete also needs `delete`). Webhook create never returns the signing secret. Destructive tools set `destructiveHint`. No alert editing and no team management. New writes are a product decision, not a default for a tool that would be "nice to have."
 
 
 ## Hosted endpoint (Cloudflare Worker)
