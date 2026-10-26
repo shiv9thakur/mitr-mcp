@@ -24,11 +24,11 @@ function setup(handlers = {}) {
 
 const call = async (tool, args) => tool.handler(args, {});
 
-test("exposes exactly the seventeen documented tools, each with a title and a real description", () => {
+test("exposes exactly the twenty-one documented tools, each with a title and a real description", () => {
   const { tools } = setup();
   assert.deepEqual(
     Object.keys(tools).sort(),
-    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "get_alert_rule", "get_app_report", "get_billing_usage", "get_funnel_results", "get_recent_events", "list_apps", "list_funnels", "update_funnel", "update_qr_campaign", "update_webhook"]
+    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "get_alert_rule", "get_app_report", "get_billing_usage", "get_funnel_results", "get_qr_campaign", "get_recent_events", "get_webhook_health", "get_workspace_overview", "list_apps", "list_funnels", "list_qr_campaigns", "update_funnel", "update_qr_campaign", "update_webhook"]
   );
   for (const [name, t] of Object.entries(tools)) {
     assert.ok(t.title && t.title.length > 3, `${name} title`);

@@ -43,7 +43,7 @@ test("a real MCP client lists the tools and calls one with the caller's key", as
   const { apiCalls, logs, handler } = setup();
   const client = await connect(handler);
   const { tools } = await client.listTools();
-  assert.equal(tools.length, 17);
+  assert.equal(tools.length, 21);
   const r = await client.callTool({ name: "list_apps", arguments: {} });
   assert.deepEqual(JSON.parse(r.content[0].text), { apps: [{ name: "Stub Site", siteId: "s1" }] });
   assert.equal(apiCalls.at(-1).url, "https://api.mitranalytics.dev/api/v1/mcp/apps");
@@ -97,7 +97,7 @@ test("browser origins other than the allowed ones are refused", async () => {
   const res = await handler(new Request(ENDPOINT, { method: "POST", headers: { origin: "https://evil.example", authorization: `Bearer ${KEY}` }, body: "{}" }));
   assert.equal(res.status, 403);
   const client = await connect(handler, { Authorization: `Bearer ${KEY}`, Origin: "https://claude.ai" });
-  assert.equal((await client.listTools()).tools.length, 17);
+  assert.equal((await client.listTools()).tools.length, 21);
   await client.close();
 });
 
