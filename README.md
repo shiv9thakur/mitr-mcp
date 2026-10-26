@@ -18,7 +18,7 @@ You need a Mitr account. Nothing to install if you use the hosted endpoint.
 
 **1. Create an API key.** In the dashboard open **Settings → API keys & AI assistants → Create key**, give it a name (for example "Claude Code") and copy it. It is shown **once**.
 
-Keys are **read-only** unless you tick "Can register apps" when creating them (needed only for `add_app`), and they expire after 365 days by default (30, 90, 365 days or never). A key stops working if you leave or are removed from the workspace it was created in.
+Keys are **read-only** unless you tick permissions when creating them: "Can register apps", "Can manage funnels", "Can manage QR campaigns", "Can manage webhooks", and "Can delete" (which also needs one of the manage permissions). They expire after 365 days by default (30, 90, 365 days or never). A key stops working if you leave or are removed from the workspace it was created in.
 
 **2. Connect your assistant.**
 
@@ -103,9 +103,19 @@ The same works in Claude Code (`claude mcp add mitr --env MITR_API_KEY=mitr_live
 | `get_funnel_results` | Step-by-step conversion and drop-off for one funnel over a date range. |
 | `get_alert_rule` | Your traffic spike/drop alert settings, if you have set one. |
 | `get_billing_usage` | Your plan, subscription status and event usage. |
-| `add_app` | Register a new app. The only tool that changes anything, and it needs a key with "Can register apps". The app's secret key is not returned: copy it from the dashboard. |
+| `get_workspace_overview` | One summary of every app's traffic, webhooks, QR campaigns and funnels, with anything that needs attention. |
+| `list_qr_campaigns` | Your QR campaigns with ids, status, scan totals and your plan's QR limits. |
+| `get_qr_campaign` | One campaign with its codes and per-code scan counts. |
+| `get_webhook_health` | Per webhook endpoint: delivery counts by status and the latest failure. Payloads are never returned. |
+| `add_app` | Register a new app. Needs "Can register apps". The app's secret key is not returned: copy it from the dashboard. |
+| `create_funnel`, `update_funnel` | Create a funnel from ordered page-path or event steps, or replace a funnel's name and steps. Needs "Can manage funnels". |
+| `delete_funnel` | Permanently delete a funnel. Needs "Can manage funnels" and "Can delete". |
+| `create_qr_campaign`, `update_qr_campaign` | Create a campaign that sends scanners to an https URL, or rename it, change the destination, or set its status to active, paused or archived. Needs "Can manage QR campaigns". |
+| `add_qr_code` | Add a printable code to a campaign, labelled by placement. Needs "Can manage QR campaigns". |
+| `create_webhook`, `update_webhook` | Create an https webhook endpoint, or change its URL and event types, or pause it. The signing secret is not returned: copy it from the dashboard. Needs "Can manage webhooks". |
+| `delete_webhook` | Permanently delete a webhook endpoint. Needs "Can manage webhooks" and "Can delete". |
 
-There is deliberately no tool to delete anything, edit alerts or webhooks, or manage your team.
+Every change is its own permission on the key, and deletes need "Can delete" as well. Alerts and team management are not available to the assistant.
 
 ## Security and privacy
 
@@ -114,7 +124,7 @@ There is deliberately no tool to delete anything, edit alerts or webhooks, or ma
 - **It sits in your assistant's config file in plain text.** Use a separate key per tool, so you can revoke one without breaking the others.
 - **Your AI provider sees the data you ask about.** Reports and recent events (page paths, UTM tags, device and location summaries, any custom event properties you send) are returned to the assistant, so they are covered by that provider's terms. Mitr itself identifies visitors only by hashed identifiers; see [how we count visitors without cookies](https://mitranalytics.dev/blog/why-we-built-analytics-without-cookies).
 - **Visitor data is marked as untrusted.** Page paths, referrers, UTM tags and event properties are written by your visitors, so anyone can put text in them, including text aimed at an AI. Reports and recent events are cleaned of hidden characters and returned inside an `untrusted_data` envelope telling the assistant to treat them as data, never instructions.
-- **No secrets in the conversation.** `add_app` doesn't return the new app's SDK secret key; copy it from the dashboard.
+- **No secrets in the conversation.** `add_app` doesn't return the new app's SDK secret key, and the webhook tools don't return signing secrets; copy them from the dashboard.
 - The key is only ever sent over HTTPS (plain `http://` is accepted only for `localhost`).
 
 ## Plans
@@ -129,7 +139,7 @@ Hosted: open https://mcp.mitranalytics.dev/ in a browser; it should show the ser
 |---|---|
 | `MITR_API_KEY is not set` | The `env` block is missing or in the wrong place in the client config. |
 | "Your Mitr API key was rejected" | The key expired, was revoked or was copied wrongly, or you're no longer in its workspace. Create a new one in Settings → API keys. |
-| "missing the 'apps:write' permission" | The key is read-only. Create one with "Can register apps" ticked to use `add_app`. |
+| "missing the 'apps:write' permission" (or `funnels:write`, `qr:write`, `webhooks:write`, `delete`) | The key doesn't have that permission. Create one with it ticked to use the tool. |
 | "early-access period has ended for the Free plan" | Upgrade the workspace; the same key starts working again. |
 | 401 from the hosted endpoint | The `Authorization: Bearer mitr_live_…` header is missing or malformed in the client config. |
 | "Mitr is rate-limiting this key" | Too many requests in a short time. Wait a minute. |

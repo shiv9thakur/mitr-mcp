@@ -7,6 +7,8 @@ import { registerAppTools } from "./tools/apps.js";
 import { registerBillingTools } from "./tools/billing.js";
 import { registerFunnelTools } from "./tools/funnels.js";
 import { registerReportTools } from "./tools/reports.js";
+import { registerWorkspaceTools } from "./tools/workspace.js";
+import { registerWriteTools } from "./tools/writes.js";
 
 export function createServer(client: MitrClient, version: string): McpServer {
   const server = new McpServer({ name: "mitr", version });
@@ -15,6 +17,8 @@ export function createServer(client: MitrClient, version: string): McpServer {
   registerFunnelTools(server, client);
   registerAlertTools(server, client);
   registerBillingTools(server, client);
+  registerWriteTools(server, client);
+  registerWorkspaceTools(server, client);
   return server;
 }
 
