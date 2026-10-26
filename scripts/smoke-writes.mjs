@@ -25,14 +25,15 @@ const client = new Client({ name: "mitr-smoke-writes", version: "1" });
 await client.connect(new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { Authorization: `Bearer ${key}` } } }));
 
 const results = [];
-async function step(name, tool, args, { expectError = false } = {}) {
+async function step(name, tool, args, { expectError = false, skipOn = null } = {}) {
   let outcome = "PASS";
   let data;
   try {
     const r = await client.callTool({ name: tool, arguments: args });
     const text = r.content?.[0]?.text ?? "";
     if (r.isError) {
-      outcome = expectError ? "PASS" : `FAIL (${text.slice(0, 160)})`;
+      if (skipOn && skipOn.test(text)) outcome = `SKIP (${text.slice(0, 120)})`;
+      else outcome = expectError ? "PASS" : `FAIL (${text.slice(0, 160)})`;
     } else if (expectError) {
       outcome = "FAIL (expected an error)";
     } else {
@@ -42,7 +43,8 @@ async function step(name, tool, args, { expectError = false } = {}) {
     outcome = `FAIL (${String(e.message || e).slice(0, 160)})`;
   }
   results.push([name, outcome]);
-  console.log(`${outcome.startsWith("PASS") ? "PASS" : "FAIL"}  ${name}${outcome.startsWith("PASS") ? "" : "  " + outcome}`);
+  const label = outcome.startsWith("PASS") ? "PASS" : outcome.startsWith("SKIP") ? "SKIP" : "FAIL";
+  console.log(`${label}  ${name}${label === "PASS" ? "" : "  " + outcome}`);
   return data;
 }
 
@@ -63,9 +65,10 @@ if (funnelId) {
 }
 
 // Webhook: create paused, update, delete.
+// A plan has a fixed number of webhook endpoints; a workspace already at its limit can't run this part.
 const hook = await step("create_webhook (secret withheld)", "create_webhook", {
   url: "https://example.com/mitr-smoke-test", eventTypes: [], isActive: false,
-});
+}, { skipOn: /maximum of \d+ webhook endpoint/i });
 if (hook && JSON.stringify(hook).includes('"secret"')) results.push(["webhook secret leaked into the result", "FAIL"]), console.log("FAIL  webhook secret leaked into the result");
 const hookId = hook?.id;
 if (hookId) {
@@ -95,6 +98,8 @@ await step("update_funnel on an unknown id is refused", "update_funnel", {
 }, { expectError: true });
 
 await client.close();
-const failed = results.filter(([, o]) => !o.startsWith("PASS"));
+const skipped = results.filter(([, o]) => o.startsWith("SKIP"));
+const failed = results.filter(([, o]) => !o.startsWith("PASS") && !o.startsWith("SKIP"));
+if (skipped.length) console.log(`\n${skipped.length} step(s) skipped (plan limit): ${skipped.map(([n]) => n).join(", ")}. Run on a workspace with a free webhook slot to cover them.`);
 console.log(failed.length ? `\n${failed.length} step(s) failed.` : "\nAll write steps passed. Revoke the throwaway key now.");
 process.exit(failed.length ? 1 : 0);
