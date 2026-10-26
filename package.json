@@ -43,8 +43,8 @@
     "test": "npm run build && node --test",
     "prepublishOnly": "npm test",
     "check:worker": "tsc -p tsconfig.worker.json",
-    "dev:worker": "wrangler dev",
-    "deploy:worker": "npm test && npm run check:worker && wrangler deploy"
+    "dev:worker": "npx wrangler dev",
+    "deploy:worker": "npm test && npm run check:worker && npx wrangler deploy"
   },
   "publishConfig": {
     "access": "public"
