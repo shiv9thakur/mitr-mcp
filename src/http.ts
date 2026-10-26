@@ -1,6 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createMitrClient } from "./client.js";
-import { ConfigError, loadConfig } from "./config.js";
+import { ConfigError, DEFAULT_API_BASE_URL, loadConfig } from "./config.js";
 import { createServer } from "./server.js";
 
 /**
@@ -10,6 +10,12 @@ import { createServer } from "./server.js";
  * Stateless: every request builds a fresh server for the caller's key, so there is no session to store, nothing
  * shared between keys, and any instance can answer any request. The key is checked by the Mitr API on every tool
  * call (scopes, expiry, workspace, rate limit, plan), exactly as for the npm package.
+ *
+ * Credentials are either an API key (mitr_live_…) or an OAuth access token (mitr_oat_…) from the sign-in flow,
+ * whose authorization server is the Mitr API (mitr-backend app/api/v1/oauth.py). Unauthenticated requests get a
+ * 401 pointing at the protected resource metadata, which is how claude.ai and other clients find the sign-in.
+ * Each credential is checked against the API before use (cached briefly), so an expired token gets an HTTP 401
+ * the client can react to by refreshing, instead of tool errors.
  */
 
 export interface HttpHandlerOptions {
@@ -21,7 +27,20 @@ export interface HttpHandlerOptions {
   /** Injected in tests; defaults to the global fetch. */
   fetchImpl?: typeof fetch;
   log?: (entry: Record<string, unknown>) => void;
+  /** How long a credential that passed the API check is trusted without asking again. Default 60 s; 0 = always ask. */
+  tokenCheckCacheMs?: number;
+  /**
+   * This endpoint's canonical URL, as users add it to their client. OAuth tokens are bound to it and Claude
+   * requires the protected resource metadata to repeat it exactly, so it is configuration, not derived from the
+   * request. Default https://mcp.mitranalytics.dev/mcp.
+   */
+  resourceUrl?: string;
 }
+
+export const DEFAULT_RESOURCE_URL = "https://mcp.mitranalytics.dev/mcp";
+
+export const SCOPES_SUPPORTED = ["mitr:read", "mitr:apps.write", "offline_access"];
+const tokenOkUntil = new Map<string, number>();
 
 export const DEFAULT_ALLOWED_ORIGINS = ["https://claude.ai", "https://chatgpt.com", "https://chat.openai.com"];
 const DOCS_URL = "https://mitranalytics.dev/docs/mcp";
@@ -34,10 +53,57 @@ function json(status: number, body: unknown, headers: Record<string, string> = {
   });
 }
 
-function unauthorized(message: string): Response {
-  return json(401, { error: "unauthorized", message }, {
-    "www-authenticate": 'Bearer realm="mitr", error="invalid_token"',
-  });
+function metadataUrl(resourceUrl: string): string {
+  return `${new URL(resourceUrl).origin}/.well-known/oauth-protected-resource`;
+}
+
+function unauthorized(resourceUrl: string, message: string, tokenPresented: boolean): Response {
+  const parts = [`resource_metadata="${metadataUrl(resourceUrl)}"`, `scope="mitr:read"`];
+  if (tokenPresented) parts.push('error="invalid_token"');
+  return json(401, { error: "unauthorized", message }, { "www-authenticate": `Bearer ${parts.join(", ")}` });
+}
+
+/** Asks the Mitr API whether this credential works right now. Returns null when it does. */
+async function checkCredential(
+  token: string,
+  apiBaseUrl: string,
+  resourceUrl: string,
+  options: HttpHandlerOptions
+): Promise<Response | null> {
+  const cacheMs = options.tokenCheckCacheMs ?? 60_000;
+  const okUntil = tokenOkUntil.get(token);
+  if (okUntil && okUntil > Date.now()) return null;
+  let res: Response;
+  try {
+    res = await (options.fetchImpl ?? fetch)(`${apiBaseUrl}/api/v1/mcp/token-check`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "User-Agent": `mitr-mcp-hosted/${options.version}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    return json(503, { error: "unavailable", message: "Could not reach Mitr to check your credentials. Try again shortly." });
+  }
+  if (res.ok) {
+    if (cacheMs > 0) {
+      if (tokenOkUntil.size > 5000) tokenOkUntil.clear();
+      tokenOkUntil.set(token, Date.now() + cacheMs);
+    }
+    return null;
+  }
+  tokenOkUntil.delete(token);
+  let detail = "";
+  try {
+    const body = (await res.json()) as { detail?: unknown };
+    if (typeof body?.detail === "string") detail = body.detail;
+  } catch {
+    // not JSON; use the generic messages below
+  }
+  if (res.status === 401) {
+    return unauthorized(resourceUrl, detail || "Your Mitr credentials were rejected. Sign in again or create a new API key.", true);
+  }
+  if (res.status === 402 || res.status === 403 || res.status === 429) {
+    return json(res.status, { error: res.status === 429 ? "rate_limited" : "forbidden", message: detail || `Mitr refused the request (${res.status}).` });
+  }
+  return json(503, { error: "unavailable", message: "Mitr could not check your credentials. Try again shortly." });
 }
 
 /** What the request asks for, for logs only. Never the arguments (they can contain the user's data). */
@@ -60,11 +126,25 @@ export async function handleMcpHttpRequest(req: Request, options: HttpHandlerOpt
   const url = new URL(req.url);
   const log = options.log ?? (() => {});
 
+  const apiBaseUrl = (options.apiBaseUrl || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
+  const resourceUrl = options.resourceUrl || DEFAULT_RESOURCE_URL;
+
   if (url.pathname === "/" || url.pathname === "/health") {
-    return json(200, { name: "mitr-mcp", version: options.version, endpoint: `${url.origin}/mcp`, docs: DOCS_URL });
+    return json(200, { name: "mitr-mcp", version: options.version, endpoint: resourceUrl, docs: DOCS_URL });
+  }
+  // RFC 9728 protected resource metadata: where clients learn which authorization server signs users in.
+  if (url.pathname === "/.well-known/oauth-protected-resource" || url.pathname === "/.well-known/oauth-protected-resource/mcp") {
+    return new Response(JSON.stringify({
+      resource: resourceUrl,
+      authorization_servers: [apiBaseUrl],
+      scopes_supported: SCOPES_SUPPORTED,
+      bearer_methods_supported: ["header"],
+      resource_name: "Mitr Analytics",
+      resource_documentation: DOCS_URL,
+    }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" } });
   }
   if (url.pathname !== "/mcp") {
-    return json(404, { error: "not_found", message: `The MCP endpoint is ${url.origin}/mcp` });
+    return json(404, { error: "not_found", message: `The MCP endpoint is ${resourceUrl}` });
   }
 
   // DNS-rebinding / cross-site protection (MCP Streamable HTTP transport requirement). Server-to-server MCP
@@ -84,14 +164,24 @@ export async function handleMcpHttpRequest(req: Request, options: HttpHandlerOpt
 
   const match = /^Bearer\s+(\S+)\s*$/i.exec(req.headers.get("authorization") ?? "");
   if (!match) {
-    return unauthorized(`Send your Mitr API key as 'Authorization: Bearer mitr_live_…'. Create one in the Mitr dashboard (Settings → API keys). Setup: ${DOCS_URL}`);
+    return unauthorized(
+      resourceUrl,
+      `Sign in to Mitr when your assistant asks, or send an API key as 'Authorization: Bearer mitr_live_…' (create one in the Mitr dashboard, Settings → API keys). Setup: ${DOCS_URL}`,
+      false
+    );
   }
 
   let config;
   try {
     config = loadConfig({ MITR_API_KEY: match[1], MITR_API_BASE_URL: options.apiBaseUrl });
   } catch (err) {
-    return unauthorized(err instanceof ConfigError ? err.message : "Invalid API key.");
+    return unauthorized(resourceUrl, err instanceof ConfigError ? err.message : "Invalid API key.", true);
+  }
+
+  const refused = await checkCredential(config.apiKey, apiBaseUrl, resourceUrl, options);
+  if (refused) {
+    log({ status: refused.status, ms: Date.now() - started, key: `…${config.apiKey.slice(-4)}`, check: "refused" });
+    return refused;
   }
 
   const what = await describe(req);
