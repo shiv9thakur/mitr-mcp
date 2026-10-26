@@ -39,7 +39,17 @@ export interface HttpHandlerOptions {
 
 export const DEFAULT_RESOURCE_URL = "https://mcp.mitranalytics.dev/mcp";
 
-export const SCOPES_SUPPORTED = ["mitr:read", "mitr:apps.write", "offline_access"];
+// Mirrors mitr-backend app/services/oauth_service.py SUPPORTED_SCOPES. Reading is always granted; each write is a
+// separate opt-in on the consent screen. The 401 challenge below still asks only for "mitr:read".
+export const SCOPES_SUPPORTED = [
+  "mitr:read",
+  "mitr:apps.write",
+  "mitr:funnels.write",
+  "mitr:qr.write",
+  "mitr:webhooks.write",
+  "mitr:delete",
+  "offline_access",
+];
 const tokenOkUntil = new Map<string, number>();
 
 export const DEFAULT_ALLOWED_ORIGINS = ["https://claude.ai", "https://chatgpt.com", "https://chat.openai.com"];

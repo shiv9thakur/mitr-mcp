@@ -111,7 +111,7 @@ test("protected resource metadata names the Mitr API as the authorization server
     assert.deepEqual(await res.json(), {
       resource: ENDPOINT,
       authorization_servers: ["https://api.mitranalytics.dev"],
-      scopes_supported: ["mitr:read", "mitr:apps.write", "offline_access"],
+      scopes_supported: ["mitr:read", "mitr:apps.write", "mitr:funnels.write", "mitr:qr.write", "mitr:webhooks.write", "mitr:delete", "offline_access"],
       bearer_methods_supported: ["header"],
       resource_name: "Mitr Analytics",
       resource_documentation: "https://mitranalytics.dev/docs/mcp",
