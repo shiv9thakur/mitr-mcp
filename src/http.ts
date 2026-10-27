@@ -40,7 +40,7 @@ export interface HttpHandlerOptions {
 export const DEFAULT_RESOURCE_URL = "https://mcp.mitranalytics.dev/mcp";
 
 // Mirrors mitr-backend app/services/oauth_service.py SUPPORTED_SCOPES. Reading is always granted; each write is a
-// separate opt-in on the consent screen. The 401 challenge below still asks only for "mitr:read".
+// separate opt-in on the consent screen, off by default.
 export const SCOPES_SUPPORTED = [
   "mitr:read",
   "mitr:apps.write",
@@ -50,6 +50,10 @@ export const SCOPES_SUPPORTED = [
   "mitr:delete",
   "offline_access",
 ];
+// The scopes the 401 challenge tells a client to request. Clients (claude.ai among them) request exactly this, and the
+// consent screen only offers switches for what was requested, so it must include every write scope or the user can
+// never turn one on. Offering is not granting: each write is still off until the user switches it on.
+export const CHALLENGE_SCOPES = SCOPES_SUPPORTED.filter((s) => s !== "offline_access");
 const tokenOkUntil = new Map<string, number>();
 
 export const DEFAULT_ALLOWED_ORIGINS = ["https://claude.ai", "https://chatgpt.com", "https://chat.openai.com"];
@@ -68,7 +72,7 @@ function metadataUrl(resourceUrl: string): string {
 }
 
 function unauthorized(resourceUrl: string, message: string, tokenPresented: boolean): Response {
-  const parts = [`resource_metadata="${metadataUrl(resourceUrl)}"`, `scope="mitr:read"`];
+  const parts = [`resource_metadata="${metadataUrl(resourceUrl)}"`, `scope="${CHALLENGE_SCOPES.join(" ")}"`];
   if (tokenPresented) parts.push('error="invalid_token"');
   return json(401, { error: "unauthorized", message }, { "www-authenticate": `Bearer ${parts.join(", ")}` });
 }

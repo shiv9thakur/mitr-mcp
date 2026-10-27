@@ -128,7 +128,7 @@ test("no key, or a malformed one, gets 401 with a Bearer challenge and setup hel
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
     }));
     assert.equal(res.status, 401, String(auth));
-    assert.match(res.headers.get("www-authenticate"), /^Bearer resource_metadata="https:\/\/mcp\.mitranalytics\.dev\/\.well-known\/oauth-protected-resource", scope="mitr:read"/);
+    assert.match(res.headers.get("www-authenticate"), /^Bearer resource_metadata="https:\/\/mcp\.mitranalytics\.dev\/\.well-known\/oauth-protected-resource", scope="mitr:read mitr:apps\.write mitr:funnels\.write mitr:qr\.write mitr:webhooks\.write mitr:delete"/);
     assert.match((await res.json()).message, /API key/);
   }
   assert.equal(apiCalls.length, 0);
