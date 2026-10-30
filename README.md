@@ -97,6 +97,7 @@ The same works in Claude Code (`claude mcp add mitr --env MITR_API_KEY=mitr_live
 | Tool | What it does |
 |---|---|
 | `list_apps` | Every app in your workspace, with the `siteId` the other tools need. |
+| `get_campaign_report` | Marketing attribution: visitors and conversions per UTM campaign, source or medium, vs the previous period. |
 | `get_app_report` | A 7-day report for one app: visitors, pageviews, traffic, sources, countries, devices, web vitals, conversions. |
 | `get_recent_events` | The latest raw events for one app, to check what is really being tracked. |
 | `list_funnels` | Your saved conversion funnels. |
