@@ -28,7 +28,7 @@ test("exposes exactly the twenty-one documented tools, each with a title and a r
   const { tools } = setup();
   assert.deepEqual(
     Object.keys(tools).sort(),
-    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "get_alert_rule", "get_app_report", "get_billing_usage", "get_funnel_results", "get_qr_campaign", "get_recent_events", "get_webhook_health", "get_workspace_overview", "list_apps", "list_funnels", "list_qr_campaigns", "update_funnel", "update_qr_campaign", "update_webhook"]
+    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "get_alert_rule", "get_app_report", "get_billing_usage", "get_campaign_report", "get_funnel_results", "get_qr_campaign", "get_recent_events", "get_webhook_health", "get_workspace_overview", "list_apps", "list_funnels", "list_qr_campaigns", "update_funnel", "update_qr_campaign", "update_webhook"]
   );
   for (const [name, t] of Object.entries(tools)) {
     assert.ok(t.title && t.title.length > 3, `${name} title`);
@@ -48,6 +48,8 @@ test("read tools call the expected /mcp routes and return the JSON as text", asy
   await call(tools.get_funnel_results, { funnelId });
   await call(tools.get_alert_rule, {});
   await call(tools.get_billing_usage, {});
+  await call(tools.get_campaign_report, { siteId });
+  await call(tools.get_campaign_report, { siteId, days: 7, groupBy: "source_medium", conversionEvent: "signup" });
   assert.deepEqual(calls.map((c) => c[1]), [
     "/mcp/apps",
     `/mcp/apps/${siteId}/report`,
@@ -57,6 +59,8 @@ test("read tools call the expected /mcp routes and return the JSON as text", asy
     `/mcp/funnels/${funnelId}/results`,
     "/mcp/alerts",
     "/mcp/billing/usage",
+    `/mcp/apps/${siteId}/campaigns`,
+    `/mcp/apps/${siteId}/campaigns?days=7&group_by=source_medium&conversion_event=signup`,
   ]);
   assert.ok(calls.every((c) => c[0] === "GET"));
 });
