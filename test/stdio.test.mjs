@@ -45,7 +45,7 @@ test("lists the twenty-one tools and calls one through the real protocol", async
   seen.length = 0;
   const client = await connect();
   const { tools } = await client.listTools();
-  assert.equal(tools.length, 21);
+  assert.equal(tools.length, 22);
   assert.ok(tools.some((t) => t.name === "list_apps"));
 
   const r = await client.callTool({ name: "list_apps", arguments: {} });
