@@ -9,15 +9,35 @@ export function registerReportTools(server: McpServer, client: MitrClient) {
     {
       title: "Get an app's analytics report",
       description:
-        "Fetch a 7-day analytics report for one app: active users, KPIs (pageviews, unique visitors) with sparklines, traffic overview, acquisition (referrers/UTM/entry pages), geography, device/browser/OS breakdown, web vitals, and conversions. Structured data meant for you to analyze and summarize, not a canned report.",
+        "Fetch an analytics report for one app: active users, KPIs (pageviews, unique visitors) with change against a comparison period and daily sparklines, traffic per day, acquisition (referrers, channels, UTM campaigns, entry pages), geography, device/browser/OS/language breakdown, web vitals, conversions (custom events) and AI crawler activity. Without dates it covers the rolling last 7 days compared with the 7 before. Pass from/to (YYYY-MM-DD, UTC days, inclusive, at most 366 days, nothing in the future) for any other range, and compare to choose the previous period of equal length (default) or the same dates a year earlier. appliedRange in the result states exactly which window and comparison were used; quote it rather than assuming. Structured data meant for you to analyze and summarize, not a canned report.",
       inputSchema: {
         siteId: z.string().uuid().describe("The app's siteId, from list_apps."),
+        from: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.")
+          .optional()
+          .describe("First day of the range, YYYY-MM-DD (UTC). Alone, the range runs to today."),
+        to: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.")
+          .optional()
+          .describe("Last day of the range, inclusive, YYYY-MM-DD (UTC). Alone, the range is the 7 days ending that day."),
+        compare: z
+          .enum(["previous_period", "previous_year"])
+          .optional()
+          .describe("What the KPI changes compare against: the equal-length period just before (default) or the same dates a year earlier."),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async ({ siteId }) =>
+    async ({ siteId, from, to, compare }) =>
       runTool(async () => {
-        const data = await client.get(`/mcp/apps/${siteId}/report`);
+        const params = new URLSearchParams();
+        if (from) params.set("from", from);
+        if (to) params.set("to", to);
+        if (compare) params.set("compare", compare);
+        const qs = params.toString();
+        const query = qs ? `?${qs}` : "";
+        const data = await client.get(`/mcp/apps/${siteId}/report${query}`);
         return visitorDataResult(data);
       })
   );
@@ -89,7 +109,8 @@ export function registerReportTools(server: McpServer, client: MitrClient) {
         if (days !== undefined) params.set("days", String(days));
         if (groupBy !== undefined) params.set("group_by", groupBy);
         if (conversionEvent !== undefined) params.set("conversion_event", conversionEvent);
-        const query = params.size ? `?${params}` : "";
+        const qs = params.toString();
+        const query = qs ? `?${qs}` : "";
         const data = await client.get(`/mcp/apps/${siteId}/campaigns${query}`);
         return visitorDataResult(data);
       })

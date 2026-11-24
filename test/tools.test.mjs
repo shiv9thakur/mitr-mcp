@@ -42,6 +42,7 @@ test("read tools call the expected /mcp routes and return the JSON as text", asy
   const funnelId = "0f0f0f0f-0b0e-4a3c-9a8e-222222222222";
   await call(tools.list_apps, {});
   await call(tools.get_app_report, { siteId });
+  await call(tools.get_app_report, { siteId, from: "2026-10-01", to: "2026-10-31", compare: "previous_year" });
   await call(tools.get_recent_events, { siteId });
   await call(tools.get_recent_events, { siteId, limit: 5 });
   await call(tools.list_funnels, {});
@@ -55,6 +56,7 @@ test("read tools call the expected /mcp routes and return the JSON as text", asy
   assert.deepEqual(calls.map((c) => c[1]), [
     "/mcp/apps",
     `/mcp/apps/${siteId}/report`,
+    `/mcp/apps/${siteId}/report?from=2026-10-01&to=2026-10-31&compare=previous_year`,
     `/mcp/apps/${siteId}/events/recent`,
     `/mcp/apps/${siteId}/events/recent?limit=5`,
     "/mcp/funnels",
@@ -119,6 +121,8 @@ test("input schemas reject bad input before any request is made", () => {
   const report = z.object(tools.get_app_report.inputSchema.shape ?? tools.get_app_report.inputSchema);
   assert.equal(report.safeParse({ siteId: "not-a-uuid" }).success, false);
   assert.equal(report.safeParse({ siteId: "9e6653d6-0b0e-4a3c-9a8e-111111111111" }).success, true);
+  assert.equal(report.safeParse({ siteId: "9e6653d6-0b0e-4a3c-9a8e-111111111111", from: "1 Oct" }).success, false);
+  assert.equal(report.safeParse({ siteId: "9e6653d6-0b0e-4a3c-9a8e-111111111111", compare: "yesterday" }).success, false);
   const events = z.object(tools.get_recent_events.inputSchema.shape ?? tools.get_recent_events.inputSchema);
   assert.equal(events.safeParse({ siteId: "9e6653d6-0b0e-4a3c-9a8e-111111111111", limit: 500 }).success, false);
   const catalog = z.object(tools.describe_events.inputSchema.shape ?? tools.describe_events.inputSchema);
