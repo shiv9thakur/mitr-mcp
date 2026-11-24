@@ -111,6 +111,8 @@ The same works in Claude Code (`claude mcp add mitr --env MITR_API_KEY=mitr_live
 | `get_qr_campaign` | One campaign with its codes and per-code scan counts. |
 | `get_webhook_health` | Per webhook endpoint: delivery counts by status and the latest failure. Payloads are never returned. |
 | `add_app` | Register a new app. Needs "Can register apps". The app's secret key is not returned: copy it from the dashboard. |
+| `get_install_snippet` | The install command and code for an app on web, pixel, Flutter, React Native or Node. Never includes the secret key. |
+| `verify_installation` | Is the app receiving events? First/last event, the last 24 hours by event type and device, and likely problems if nothing arrives. |
 | `create_funnel`, `update_funnel` | Create a funnel from ordered page-path or event steps, or replace a funnel's name and steps. Needs "Can manage funnels". |
 | `delete_funnel` | Permanently delete a funnel. Needs "Can manage funnels" and "Can delete". |
 | `create_qr_campaign`, `update_qr_campaign` | Create a campaign that sends scanners to an https URL, or rename it, change the destination, or set its status to active, paused or archived. Needs "Can manage QR campaigns". |
@@ -130,7 +132,7 @@ Ready-made workflows in your client's prompt menu (for example `/` in Claude). E
 | `explain_change` | `siteId`, `metric` | Where a rise or drop came from: source, campaign, page, country, device. |
 | `funnel_audit` | `funnelId` | The biggest drop-off step, whether the steps look right, and three fixes. |
 | `campaign_wrapup` | `siteId`, `campaign`, `conversionEvent` | Results for a UTM or QR campaign by source or placement, including cost per scan where set. |
-| `setup_tracking` | `platform` (`web`, `flutter`, `react-native`, `node`) | Add Mitr to a site or app and check that events arrive. Never asks for a secret key. |
+| `setup_tracking` | `platform` (`web`, `pixel`, `flutter`, `react-native`, `node`) | Add Mitr to a site or app and check that events arrive. Never asks for a secret key. |
 
 ## Security and privacy
 
