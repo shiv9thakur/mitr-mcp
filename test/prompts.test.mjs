@@ -40,7 +40,7 @@ test("every tool a prompt tells the assistant to call actually exists", async ()
   const toolNames = new Set(Object.keys(tools));
   for (const [name, p] of Object.entries(prompts)) {
     const text = await render(p, name === "setup_tracking" ? { platform: "web" } : {});
-    const named = new Set(text.match(/\b(?:get|list|add|create|update|delete|describe|query)_[a-z_]+\b/g) ?? []);
+    const named = new Set(text.match(/\b(?:get|list|add|create|update|delete|describe|query|verify)_[a-z_]+\b/g) ?? []);
     assert.ok(named.size > 0, `${name} names no tools`);
     for (const t of named) assert.ok(toolNames.has(t), `${name} names unknown tool ${t}`);
   }
@@ -80,6 +80,9 @@ test("arguments are optional and are woven into the text when given", async () =
 
   assert.match(await render(prompts.setup_tracking, { platform: "flutter" }), /docs\/flutter-sdk/);
   assert.match(await render(prompts.setup_tracking), /Ask me which platform/);
+  const setupText = await render(prompts.setup_tracking, { platform: "node" });
+  assert.match(setupText, /get_install_snippet/);
+  assert.match(setupText, /verify_installation/);
 });
 
 test("setup_tracking rejects platforms Mitr has no published SDK for", () => {
@@ -89,7 +92,7 @@ test("setup_tracking rejects platforms Mitr has no published SDK for", () => {
 
 test("setup_tracking never asks for a secret key in the conversation", async () => {
   const { prompts } = setup();
-  for (const platform of ["web", "flutter", "react-native", "node"]) {
+  for (const platform of ["web", "pixel", "flutter", "react-native", "node"]) {
     assert.match(await render(prompts.setup_tracking, { platform }), /Never ask me to paste a secret key/);
   }
 });

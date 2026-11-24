@@ -174,14 +174,15 @@ export function registerPrompts(server: McpServer) {
       description: "Walk through adding Mitr to a website or app and checking that events arrive.",
       argsSchema: {
         platform: z
-          .enum(["web", "flutter", "react-native", "node"])
+          .enum(["web", "pixel", "flutter", "react-native", "node"])
           .optional()
-          .describe("Where to add Mitr: web, flutter, react-native or node. Leave empty to be asked."),
+          .describe("Where to add Mitr: web, pixel (email or no-JS), flutter, react-native or node. Leave empty to be asked."),
       },
     },
     ({ platform }) => {
       const docs: Record<string, string> = {
         web: "https://mitranalytics.dev/docs/js-sdk",
+        pixel: "https://mitranalytics.dev/docs/pixel-sdk",
         flutter: "https://mitranalytics.dev/docs/flutter-sdk",
         "react-native": "https://mitranalytics.dev/docs/react-native-sdk",
         node: "https://mitranalytics.dev/docs/node-sdk",
@@ -191,10 +192,10 @@ export function registerPrompts(server: McpServer) {
           `Help me set up Mitr tracking${platform ? ` for ${platform}` : ""}.`,
           "",
           "Steps:",
-          platform ? `1. The platform is ${platform}.` : "1. Ask me which platform: web, Flutter, React Native or Node.js.",
+          platform ? `1. The platform is ${platform}.` : "1. Ask me which platform: web, an email/no-JS pixel, Flutter, React Native or Node.js.",
           "2. Call list_apps. If an app already exists for this site or app, use it. Otherwise ask me for a name and the domain or bundle ID, then call add_app (it needs the apps:write permission; ask before calling it).",
-          `3. Point me to the install guide: ${platform ? docs[platform] : "the matching page under https://mitranalytics.dev/docs (js-sdk, flutter-sdk, react-native-sdk or node-sdk)"}. If you can see my code, show exactly where the snippet or initialisation goes. Use the app's siteId. Never ask me to paste a secret key into this conversation; server-side SDKs read it from an environment variable, and I copy it from the Mitr dashboard myself.`,
-          "4. Once I say it is installed, call get_recent_events for the app, and describe_events to list the event types arriving so far. If events are arriving, show me the latest few. If not, list the usual causes: script not deployed yet, wrong siteId, the site's domain not matching the app's domain, an ad blocker on my own browser, or a mobile app not yet rebuilt.",
+          `3. Call get_install_snippet with the app's siteId and the platform${platform ? ` (${platform})` : ""}, and show me the install command, the snippet and where it goes. If you can see my code, put it in the right place. The full guide is ${platform ? docs[platform] : "the matching page under https://mitranalytics.dev/docs"}. Never ask me to paste a secret key into this conversation; server-side SDKs read it from an environment variable, and I copy it from the Mitr dashboard myself.`,
+          "4. Once I say it is installed, call verify_installation. If events are arriving, call get_recent_events to show me the latest few. If not, go through its problems list with me, then check again a minute later.",
           "5. Suggest one funnel and one alert worth setting up next for this kind of site or app.",
         ].join("\n")
       );

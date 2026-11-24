@@ -24,11 +24,11 @@ function setup(handlers = {}) {
 
 const call = async (tool, args) => tool.handler(args, {});
 
-test("exposes exactly the twenty-four documented tools, each with a title and a real description", () => {
+test("exposes exactly the twenty-six documented tools, each with a title and a real description", () => {
   const { tools } = setup();
   assert.deepEqual(
     Object.keys(tools).sort(),
-    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "describe_events", "get_alert_rule", "get_app_report", "get_billing_usage", "get_campaign_report", "get_funnel_results", "get_qr_campaign", "get_recent_events", "get_webhook_health", "get_workspace_overview", "list_apps", "list_funnels", "list_qr_campaigns", "query_events", "update_funnel", "update_qr_campaign", "update_webhook"]
+    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "describe_events", "get_alert_rule", "get_app_report", "get_billing_usage", "get_campaign_report", "get_funnel_results", "get_install_snippet", "get_qr_campaign", "get_recent_events", "get_webhook_health", "get_workspace_overview", "list_apps", "list_funnels", "list_qr_campaigns", "query_events", "update_funnel", "update_qr_campaign", "update_webhook", "verify_installation"]
   );
   for (const [name, t] of Object.entries(tools)) {
     assert.ok(t.title && t.title.length > 3, `${name} title`);
@@ -200,4 +200,19 @@ test("query_events rejects malformed queries before any request", () => {
   assert.equal(q.safeParse({ siteId, filters: [{ dim: "path", op: "in", value: Array(21).fill("x") }] }).success, false);
   assert.equal(q.safeParse({ siteId, from: "October" }).success, false);
   assert.match(tools.query_events.description, /describe_events first/);
+});
+
+test("setup tools call their routes; the snippet tool only accepts published platforms", async () => {
+  const siteId = "9e6653d6-0b0e-4a3c-9a8e-111111111111";
+  const { calls, tools } = setup();
+  await call(tools.get_install_snippet, { siteId, platform: "react-native" });
+  await call(tools.verify_installation, { siteId });
+  assert.deepEqual(calls, [
+    ["GET", `/mcp/apps/${siteId}/install?platform=react-native`],
+    ["GET", `/mcp/apps/${siteId}/installation`],
+  ]);
+  const snip = z.object(tools.get_install_snippet.inputSchema.shape ?? tools.get_install_snippet.inputSchema);
+  assert.equal(snip.safeParse({ siteId, platform: "swift" }).success, false);
+  assert.equal(snip.safeParse({ siteId }).success, false);
+  assert.match(tools.get_install_snippet.description, /never contains the secret key/);
 });
