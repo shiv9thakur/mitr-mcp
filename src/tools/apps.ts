@@ -76,7 +76,7 @@ export function registerAppTools(server: McpServer, client: MitrClient) {
     {
       title: "Check that an app is sending events",
       description:
-        "Check whether one app is receiving events: receivingEvents (anything in the last 24 hours), first and last event time, total events, the last diagnostic ping from a mobile SDK, the last 24 hours by event type and by device/OS, and problems: likely causes in plain words when nothing arrives (wrong hostname for web apps, wrong secret key for mobile/server apps, ping but no real events, events that stopped). Read-only. Mitr does not log rejected requests per app, so a domain or key mismatch shows up only as missing events. Call it after the user says they installed the snippet, and again a minute later if nothing has arrived yet.",
+        "Check whether one app is receiving events: receivingEvents (anything in the last 24 hours), first and last event time, events in the last 30 days, the last diagnostic ping from a mobile SDK (within 30 days), the last 24 hours by event type and by device/OS, and problems: likely causes in plain words when nothing arrives (wrong hostname for web apps, wrong secret key for mobile/server apps, ping but no real events, events that stopped). Read-only. Mitr does not log rejected requests per app, so a domain or key mismatch shows up only as missing events. Call it after the user says they installed the snippet, and again a minute later if nothing has arrived yet.",
       inputSchema: {
         siteId: z.string().uuid().describe("The app's siteId, from list_apps."),
       },
