@@ -101,6 +101,7 @@ The same works in Claude Code (`claude mcp add mitr --env MITR_API_KEY=mitr_live
 | `get_app_report` | A report for one app: visitors, pageviews, traffic, sources, countries, devices, web vitals, conversions. Last 7 days by default, or any `from`/`to` range up to 366 days, compared with the previous period or the previous year. |
 | `get_recent_events` | The latest raw events for one app, to check what is really being tracked. |
 | `describe_events` | What one app tracks: each event type with counts, visitors, first/last seen, UTM share and its common property keys, over up to 90 days. |
+| `query_events` | Answer a specific question: visitors, events or pageviews, optionally for one event type, broken down by one dimension (source, campaign, page, country, device, a custom property and more) or by day/week/month, with filters, any date range up to 366 days and an optional comparison. Small groups are hidden for privacy. |
 | `list_funnels` | Your saved conversion funnels. |
 | `get_funnel_results` | Step-by-step conversion and drop-off for one funnel over a date range. |
 | `get_alert_rule` | Your traffic spike/drop alert settings, if you have set one. |

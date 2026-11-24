@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { MitrClient } from "../client.js";
 import { runTool, visitorDataResult } from "../toolResult.js";
 
+export const QUERY_DIMENSIONS = ["event_type", "path", "referrer_domain", "utm.source", "utm.medium", "utm.campaign", "utm.term", "utm.content", "country", "region", "city", "device_type", "browser", "os", "language"];
+
 export function registerReportTools(server: McpServer, client: MitrClient) {
   server.registerTool(
     "get_app_report",
@@ -78,6 +80,59 @@ export function registerReportTools(server: McpServer, client: MitrClient) {
       runTool(async () => {
         const query = days !== undefined ? `?days=${days}` : "";
         const data = await client.get(`/mcp/apps/${siteId}/events/catalog${query}`);
+        return visitorDataResult(data);
+      })
+  );
+
+  const dimension = z
+    .string()
+    .max(120)
+    .describe(
+      "One of: " + QUERY_DIMENSIONS.join(", ") + ", or meta.<key> for a custom property key that describe_events lists for this app."
+    );
+
+  server.registerTool(
+    "query_events",
+    {
+      title: "Query an app's events",
+      description:
+        "Answer a specific question about one app's events: one metric (visitors = unique visitors, events = event count, pageviews), optionally for a single event type, either broken down by one dimension (top groups first, up to 50) or as a day/week/month series, with filters, a date range (default: the last 7 days; from/to as YYYY-MM-DD, UTC, inclusive, up to 366 days) and an optional comparison period. Call describe_events first to learn the app's event names and property keys. Dimensions: " +
+        QUERY_DIMENSIONS.join(", ") +
+        ", meta.<key>. referrer_domain is null for direct visits. When city or a meta.* key is used as a breakdown or a filter, anything describing fewer than 3 visitors is hidden: such rows and time buckets have count null and are counted in suppressedGroups, and total.value or total.previous is null when withheld (total.withheld is true, also whenever exactly one group is hidden). Say so when that happens and never estimate a hidden number. The result's total is the metric over the whole filtered set (for visitors it is not the sum of the rows). appliedRange states the window used, including clampedToRetention when the plan's data retention cut the range short and previousPartial when the comparison period reaches past it. Quote appliedRange, and never present a hidden group's number.",
+      inputSchema: {
+        siteId: z.string().uuid().describe("The app's siteId, from list_apps."),
+        metric: z.enum(["visitors", "events", "pageviews"]).optional().describe("What to count. Default visitors."),
+        eventType: z
+          .string()
+          .max(100)
+          .optional()
+          .describe("Only count this event type, e.g. 'signup' (names from describe_events). Not used with metric pageviews."),
+        breakdown: dimension.optional().describe("Group by this dimension. Not combinable with interval."),
+        interval: z.enum(["day", "week", "month"]).optional().describe("Return a time series instead of a breakdown."),
+        filters: z
+          .array(
+            z.object({
+              dim: dimension,
+              op: z.enum(["eq", "neq", "contains", "in"]).describe("eq, neq, contains (case-insensitive substring), or in (a list)."),
+              value: z.union([z.string().max(200), z.array(z.string().max(200)).min(1).max(20)]).describe("A string, or a list of up to 20 strings for 'in'."),
+            })
+          )
+          .max(10)
+          .optional()
+          .describe("All filters must match (AND)."),
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.").optional().describe("First day, YYYY-MM-DD (UTC)."),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.").optional().describe("Last day, inclusive, YYYY-MM-DD (UTC)."),
+        compare: z
+          .enum(["previous_period", "previous_year"])
+          .optional()
+          .describe("Add previous values and percent change against the equal-length period before, or the same dates a year earlier."),
+        limit: z.number().int().min(1).max(50).optional().describe("Max breakdown rows (default 20, max 50)."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ siteId, ...body }) =>
+      runTool(async () => {
+        const data = await client.post(`/mcp/apps/${siteId}/query`, body);
         return visitorDataResult(data);
       })
   );
