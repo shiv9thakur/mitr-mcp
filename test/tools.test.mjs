@@ -24,11 +24,11 @@ function setup(handlers = {}) {
 
 const call = async (tool, args) => tool.handler(args, {});
 
-test("exposes exactly the twenty-three documented tools, each with a title and a real description", () => {
+test("exposes exactly the twenty-four documented tools, each with a title and a real description", () => {
   const { tools } = setup();
   assert.deepEqual(
     Object.keys(tools).sort(),
-    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "describe_events", "get_alert_rule", "get_app_report", "get_billing_usage", "get_campaign_report", "get_funnel_results", "get_qr_campaign", "get_recent_events", "get_webhook_health", "get_workspace_overview", "list_apps", "list_funnels", "list_qr_campaigns", "update_funnel", "update_qr_campaign", "update_webhook"]
+    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "describe_events", "get_alert_rule", "get_app_report", "get_billing_usage", "get_campaign_report", "get_funnel_results", "get_qr_campaign", "get_recent_events", "get_webhook_health", "get_workspace_overview", "list_apps", "list_funnels", "list_qr_campaigns", "query_events", "update_funnel", "update_qr_campaign", "update_webhook"]
   );
   for (const [name, t] of Object.entries(tools)) {
     assert.ok(t.title && t.title.length > 3, `${name} title`);
@@ -165,4 +165,39 @@ test("add_app never passes an app secret into the conversation, even from an old
   const r = await call(tools.add_app, { name: "A", platformType: "web", platformIdentifier: "a.example.com" });
   assert.doesNotMatch(r.content[0].text, /sk_live_should_not_leak|secretKey/);
   assert.match(r.content[0].text, /s1/);
+});
+
+test("query_events posts the query (without siteId) to the app's query route and wraps the result", async () => {
+  const siteId = "9e6653d6-0b0e-4a3c-9a8e-111111111111";
+  const { calls, tools } = setup({ post: () => ({ rows: [{ key: "utm.campaign", value: "spring‮", count: 3 }] }) });
+  const args = {
+    siteId,
+    metric: "visitors",
+    eventType: "signup",
+    breakdown: "utm.campaign",
+    filters: [{ dim: "country", op: "in", value: ["India", "Nepal"] }],
+    from: "2026-10-01",
+    to: "2026-10-31",
+    compare: "previous_period",
+    limit: 10,
+  };
+  const r = await call(tools.query_events, args);
+  const { siteId: _, ...body } = args;
+  assert.deepEqual(calls, [["POST", `/mcp/apps/${siteId}/query`, body]]);
+  const out = JSON.parse(r.content[0].text);
+  assert.equal(out.untrusted_data.rows[0].value, "spring");
+});
+
+test("query_events rejects malformed queries before any request", () => {
+  const { tools } = setup();
+  const q = z.object(tools.query_events.inputSchema.shape ?? tools.query_events.inputSchema);
+  const siteId = "9e6653d6-0b0e-4a3c-9a8e-111111111111";
+  assert.equal(q.safeParse({ siteId }).success, true);
+  assert.equal(q.safeParse({ siteId, metric: "revenue" }).success, false);
+  assert.equal(q.safeParse({ siteId, interval: "hour" }).success, false);
+  assert.equal(q.safeParse({ siteId, limit: 51 }).success, false);
+  assert.equal(q.safeParse({ siteId, filters: [{ dim: "path", op: "like", value: "x" }] }).success, false);
+  assert.equal(q.safeParse({ siteId, filters: [{ dim: "path", op: "in", value: Array(21).fill("x") }] }).success, false);
+  assert.equal(q.safeParse({ siteId, from: "October" }).success, false);
+  assert.match(tools.query_events.description, /describe_events first/);
 });

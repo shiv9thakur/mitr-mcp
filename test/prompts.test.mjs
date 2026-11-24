@@ -40,7 +40,7 @@ test("every tool a prompt tells the assistant to call actually exists", async ()
   const toolNames = new Set(Object.keys(tools));
   for (const [name, p] of Object.entries(prompts)) {
     const text = await render(p, name === "setup_tracking" ? { platform: "web" } : {});
-    const named = new Set(text.match(/\b(?:get|list|add|create|update|delete|describe)_[a-z_]+\b/g) ?? []);
+    const named = new Set(text.match(/\b(?:get|list|add|create|update|delete|describe|query)_[a-z_]+\b/g) ?? []);
     assert.ok(named.size > 0, `${name} names no tools`);
     for (const t of named) assert.ok(toolNames.has(t), `${name} names unknown tool ${t}`);
   }
@@ -65,6 +65,8 @@ test("arguments are optional and are woven into the text when given", async () =
   const change = await render(prompts.explain_change, { siteId: site, metric: "signup" });
   assert.match(change, /"signup"/);
   assert.match(change, /conversionEvent "signup"/);
+  assert.match(change, /query_events/);
+  assert.match(change, /eventType "signup"/);
 
   assert.match(await render(prompts.funnel_audit), /ask me which one/);
   assert.match(await render(prompts.funnel_audit, { funnelId: "f1" }), /funnelId f1/);
