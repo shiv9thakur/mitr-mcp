@@ -54,6 +54,10 @@ test("a real MCP client lists the tools and calls one with the caller's key", as
   assert.equal(toolLog.status, 200);
   assert.equal(toolLog.key, "…" + KEY.slice(-4));
   assert.doesNotMatch(JSON.stringify(logs), new RegExp(KEY));
+  const { prompts } = await client.listPrompts();
+  assert.equal(prompts.length, 5);
+  const p = await client.getPrompt({ name: "weekly_review", arguments: {} });
+  assert.match(p.messages[0].content.text, /get_workspace_overview/);
   await client.close();
 });
 

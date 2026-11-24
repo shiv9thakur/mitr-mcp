@@ -118,6 +118,18 @@ The same works in Claude Code (`claude mcp add mitr --env MITR_API_KEY=mitr_live
 
 Every change is its own permission on the key, and deletes need "Can delete" as well. Alerts and team management are not available to the assistant.
 
+## Prompts
+
+Ready-made workflows in your client's prompt menu (for example `/` in Claude). Each one tells the assistant which tools to call and how to report, using only numbers Mitr returns. Prompts make no API calls of their own and need no extra permission. Every argument is optional.
+
+| Prompt | Arguments | What you get |
+|---|---|---|
+| `weekly_review` | `siteId` | How the last 7 days went, the biggest changes, funnel drop-offs, anything broken, and three actions. |
+| `explain_change` | `siteId`, `metric` | Where a rise or drop came from: source, campaign, page, country, device. |
+| `funnel_audit` | `funnelId` | The biggest drop-off step, whether the steps look right, and three fixes. |
+| `campaign_wrapup` | `siteId`, `campaign`, `conversionEvent` | Results for a UTM or QR campaign by source or placement, including cost per scan where set. |
+| `setup_tracking` | `platform` (`web`, `flutter`, `react-native`, `node`) | Add Mitr to a site or app and check that events arrive. Never asks for a secret key. |
+
 ## Security and privacy
 
 - **A key sees what you see.** It has the same read access to your workspace as you do in the dashboard. Treat it like a password.

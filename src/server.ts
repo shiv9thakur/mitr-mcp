@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMitrClient, type MitrClient } from "./client.js";
 import type { MitrConfig } from "./config.js";
+import { registerPrompts } from "./prompts.js";
 import { registerAlertTools } from "./tools/alerts.js";
 import { registerAppTools } from "./tools/apps.js";
 import { registerBillingTools } from "./tools/billing.js";
@@ -19,6 +20,7 @@ export function createServer(client: MitrClient, version: string): McpServer {
   registerBillingTools(server, client);
   registerWriteTools(server, client);
   registerWorkspaceTools(server, client);
+  registerPrompts(server);
   return server;
 }
 

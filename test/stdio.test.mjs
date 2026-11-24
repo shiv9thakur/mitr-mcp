@@ -48,6 +48,13 @@ test("lists the twenty-one tools and calls one through the real protocol", async
   assert.equal(tools.length, 22);
   assert.ok(tools.some((t) => t.name === "list_apps"));
 
+  const { prompts } = await client.listPrompts();
+  assert.deepEqual(prompts.map((p) => p.name).sort(), ["campaign_wrapup", "explain_change", "funnel_audit", "setup_tracking", "weekly_review"]);
+  const before = seen.length;
+  const rendered = await client.getPrompt({ name: "explain_change", arguments: { metric: "signup" } });
+  assert.match(rendered.messages[0].content.text, /"signup"/);
+  assert.equal(seen.length, before, "getting a prompt must not call the Mitr API");
+
   const r = await client.callTool({ name: "list_apps", arguments: {} });
   assert.ok(!r.isError);
   assert.deepEqual(JSON.parse(r.content[0].text), { apps: [{ name: "Stub Site", siteId: "s1" }] });
