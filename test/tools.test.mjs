@@ -24,11 +24,11 @@ function setup(handlers = {}) {
 
 const call = async (tool, args) => tool.handler(args, {});
 
-test("exposes exactly the twenty-one documented tools, each with a title and a real description", () => {
+test("exposes exactly the twenty-three documented tools, each with a title and a real description", () => {
   const { tools } = setup();
   assert.deepEqual(
     Object.keys(tools).sort(),
-    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "get_alert_rule", "get_app_report", "get_billing_usage", "get_campaign_report", "get_funnel_results", "get_qr_campaign", "get_recent_events", "get_webhook_health", "get_workspace_overview", "list_apps", "list_funnels", "list_qr_campaigns", "update_funnel", "update_qr_campaign", "update_webhook"]
+    ["add_app", "add_qr_code", "create_funnel", "create_qr_campaign", "create_webhook", "delete_funnel", "delete_webhook", "describe_events", "get_alert_rule", "get_app_report", "get_billing_usage", "get_campaign_report", "get_funnel_results", "get_qr_campaign", "get_recent_events", "get_webhook_health", "get_workspace_overview", "list_apps", "list_funnels", "list_qr_campaigns", "update_funnel", "update_qr_campaign", "update_webhook"]
   );
   for (const [name, t] of Object.entries(tools)) {
     assert.ok(t.title && t.title.length > 3, `${name} title`);
@@ -50,6 +50,8 @@ test("read tools call the expected /mcp routes and return the JSON as text", asy
   await call(tools.get_billing_usage, {});
   await call(tools.get_campaign_report, { siteId });
   await call(tools.get_campaign_report, { siteId, days: 7, groupBy: "source_medium", conversionEvent: "signup" });
+  await call(tools.describe_events, { siteId });
+  await call(tools.describe_events, { siteId, days: 90 });
   assert.deepEqual(calls.map((c) => c[1]), [
     "/mcp/apps",
     `/mcp/apps/${siteId}/report`,
@@ -61,6 +63,8 @@ test("read tools call the expected /mcp routes and return the JSON as text", asy
     "/mcp/billing/usage",
     `/mcp/apps/${siteId}/campaigns`,
     `/mcp/apps/${siteId}/campaigns?days=7&group_by=source_medium&conversion_event=signup`,
+    `/mcp/apps/${siteId}/events/catalog`,
+    `/mcp/apps/${siteId}/events/catalog?days=90`,
   ]);
   assert.ok(calls.every((c) => c[0] === "GET"));
 });
@@ -117,6 +121,8 @@ test("input schemas reject bad input before any request is made", () => {
   assert.equal(report.safeParse({ siteId: "9e6653d6-0b0e-4a3c-9a8e-111111111111" }).success, true);
   const events = z.object(tools.get_recent_events.inputSchema.shape ?? tools.get_recent_events.inputSchema);
   assert.equal(events.safeParse({ siteId: "9e6653d6-0b0e-4a3c-9a8e-111111111111", limit: 500 }).success, false);
+  const catalog = z.object(tools.describe_events.inputSchema.shape ?? tools.describe_events.inputSchema);
+  assert.equal(catalog.safeParse({ siteId: "9e6653d6-0b0e-4a3c-9a8e-111111111111", days: 365 }).success, false);
   const add = z.object(tools.add_app.inputSchema.shape ?? tools.add_app.inputSchema);
   assert.equal(add.safeParse({ name: "x", platformType: "toaster", platformIdentifier: "y" }).success, false);
   assert.equal(add.safeParse({ name: "", platformType: "web", platformIdentifier: "y" }).success, false);
@@ -136,6 +142,8 @@ test("visitor-derived results are wrapped as untrusted data and cleaned of hidde
 
   const report = await call(tools.get_app_report, { siteId: "9e6653d6-0b0e-4a3c-9a8e-111111111111" });
   assert.ok("untrusted_data" in JSON.parse(report.content[0].text));
+  const catalog = await call(tools.describe_events, { siteId: "9e6653d6-0b0e-4a3c-9a8e-111111111111" });
+  assert.ok("untrusted_data" in JSON.parse(catalog.content[0].text));
 });
 
 test("every tool declares whether it writes; deletes are flagged destructive", () => {

@@ -100,6 +100,7 @@ The same works in Claude Code (`claude mcp add mitr --env MITR_API_KEY=mitr_live
 | `get_campaign_report` | Marketing attribution: visitors and conversions per UTM campaign, source or medium, vs the previous period. |
 | `get_app_report` | A 7-day report for one app: visitors, pageviews, traffic, sources, countries, devices, web vitals, conversions. |
 | `get_recent_events` | The latest raw events for one app, to check what is really being tracked. |
+| `describe_events` | What one app tracks: each event type with counts, visitors, first/last seen, UTM share and its common property keys, over up to 90 days. |
 | `list_funnels` | Your saved conversion funnels. |
 | `get_funnel_results` | Step-by-step conversion and drop-off for one funnel over a date range. |
 | `get_alert_rule` | Your traffic spike/drop alert settings, if you have set one. |

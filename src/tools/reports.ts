@@ -43,6 +43,26 @@ export function registerReportTools(server: McpServer, client: MitrClient) {
   );
 
   server.registerTool(
+    "describe_events",
+    {
+      title: "Describe what an app tracks",
+      description:
+        "List the event types one app sent over the last N days (default 30, max 90), busiest first: for each, the event count, unique visitors, first and last time seen in that window, the percent of events carrying UTM tags, and its most common custom property keys (up to 20, with counts). Call this before get_campaign_report or get_funnel_results to use the app's real event names (e.g. pass a listed event as conversionEvent), and to check whether a custom event is arriving at all. 'pageview' is the automatic page-view event. At most 100 event types; truncated is true if there were more.",
+      inputSchema: {
+        siteId: z.string().uuid().describe("The app's siteId, from list_apps."),
+        days: z.number().int().min(1).max(90).optional().describe("How many days back to look (default 30, max 90)."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ siteId, days }) =>
+      runTool(async () => {
+        const query = days !== undefined ? `?days=${days}` : "";
+        const data = await client.get(`/mcp/apps/${siteId}/events/catalog${query}`);
+        return visitorDataResult(data);
+      })
+  );
+
+  server.registerTool(
     "get_campaign_report",
     {
       title: "Get an app's marketing campaign report",

@@ -79,7 +79,8 @@ export function registerPrompts(server: McpServer) {
           "",
           "Steps:",
           siteId ? "1. Use that siteId." : "1. Call list_apps and ask me which app if there is more than one with traffic.",
-          "2. Call get_app_report. Find the KPI for the metric and its change against the previous 7 days.",
+          "2. Call get_app_report. Find the KPI for the metric and its change against the previous 7 days." +
+            (metric ? ` If "${metric}" is not a built-in KPI, call describe_events to find the matching event name.` : ""),
           "3. Call get_campaign_report with days 14, once grouped by source and once by campaign" +
             (metric ? `, passing conversionEvent "${metric}" if it is a custom event name` : "") +
             ".",
@@ -145,6 +146,9 @@ export function registerPrompts(server: McpServer) {
           `Wrap up ${campaign ? `the campaign "${campaign}"` : "a campaign"}${siteId ? ` for the app with siteId ${siteId}` : ""}.`,
           "",
           "Steps:",
+          conversionEvent
+            ? ""
+            : "First, call describe_events for the app and suggest which custom event to count as the result (e.g. signup or purchase).",
           "1. Call list_qr_campaigns. If the campaign matches a QR campaign, call get_qr_campaign for scans by placement and cost per placement.",
           `2. Otherwise treat it as a UTM campaign: call get_campaign_report${siteId ? ` with siteId ${siteId}` : " (list_apps for the siteId)"}, days 30, grouped by campaign${conversionEvent ? `, with conversionEvent "${conversionEvent}"` : ""}. Then group by source_medium to see which channels carried it.`,
           campaign ? "" : "   If no campaign was named, list the campaigns you find and ask me which one.",
@@ -187,7 +191,7 @@ export function registerPrompts(server: McpServer) {
           platform ? `1. The platform is ${platform}.` : "1. Ask me which platform: web, Flutter, React Native or Node.js.",
           "2. Call list_apps. If an app already exists for this site or app, use it. Otherwise ask me for a name and the domain or bundle ID, then call add_app (it needs the apps:write permission; ask before calling it).",
           `3. Point me to the install guide: ${platform ? docs[platform] : "the matching page under https://mitranalytics.dev/docs (js-sdk, flutter-sdk, react-native-sdk or node-sdk)"}. If you can see my code, show exactly where the snippet or initialisation goes. Use the app's siteId. Never ask me to paste a secret key into this conversation; server-side SDKs read it from an environment variable, and I copy it from the Mitr dashboard myself.`,
-          "4. Once I say it is installed, call get_recent_events for the app. If events are arriving, show me the latest few. If not, list the usual causes: script not deployed yet, wrong siteId, the site's domain not matching the app's domain, an ad blocker on my own browser, or a mobile app not yet rebuilt.",
+          "4. Once I say it is installed, call get_recent_events for the app, and describe_events to list the event types arriving so far. If events are arriving, show me the latest few. If not, list the usual causes: script not deployed yet, wrong siteId, the site's domain not matching the app's domain, an ad blocker on my own browser, or a mobile app not yet rebuilt.",
           "5. Suggest one funnel and one alert worth setting up next for this kind of site or app.",
         ].join("\n")
       );
